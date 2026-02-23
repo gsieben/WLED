@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window size="700,515" caption="0,0,0,0" sizebox="0,0,0,0">
+	<Font id="0" name="黑体" size="16" bold="false" default="true"/>
+	<Font id="1" name="黑体" size="18"/>
+	<Default name="VScrollBar" value="button1normalimage=&quot;file='img\scroll.png' source='0,0,16,16'&quot; button1hotimage=&quot;file='img\scroll.png' source='0,0,16,16' mask='#FFFF00FF'&quot; button1pushedimage=&quot;file='img\scroll.png' source='0,16,16,32' mask='#FFFF00FF'&quot; button1disabledimage=&quot;file='img\scroll.png' source='0,0,16,16' mask='#FFFF00FF'&quot; button2normalimage=&quot;file='img\scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; button2hotimage=&quot;file='img\scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; button2pushedimage=&quot;file='img\scroll.png' source='0,48,16,64' mask='#FFFF00FF'&quot; button2disabledimage=&quot;file='img\scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; thumbnormalimage=&quot;file='img\scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbhotimage=&quot;file='img\scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbpushedimage=&quot;file='img\scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbdisabledimage=&quot;file='img\scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; railnormalimage=&quot;file='img\scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; railhotimage=&quot;file='img\scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; railpushedimage=&quot;file='img\scroll.png' source='0,96,16,112' corner='2,2,2,2' mask='#FFFF00FF'&quot; raildisabledimage=&quot;file='img\scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; bknormalimage=&quot;file='img\scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkhotimage=&quot;file='img\scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkpushedimage=&quot;file='img\scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkdisabledimage=&quot;file='img\scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; " />
+	<Default name="Combo" value="scrollselect=&quot;false&quot; normalimage=&quot;file='img\Combo_nor.bmp' corner='2,2,24,2'&quot; hotimage=&quot;file='img\Combo_over.bmp' corner='2,2,24,2'&quot; pushedimage=&quot;file='img\Combo_over.bmp' corner='2,2,24,2'&quot; textpadding=&quot;3,1,1,1&quot; itemtextpadding=&quot;3,5,1,1&quot; bkcolor=&quot;#FFFFFFFF&quot; showcolortextchange=&quot;true&quot; bkcolortextchange=&quot;#FFD3CDCE&quot;" />
+	<VerticalLayout name="background" bkcolor="#FFF0F0F0">	
+		<HorizontalLayout bkcolor="#FFFFFFFF" bordercolor="#FF9AB4C3" bordersize="2">
+			<VerticalLayout inset="4,4,4,4" >
+				<HorizontalLayout bordersize="1" bordercolor="#FF000000">
+					<VerticalLayout inset="4,0,4,4" bordersize="1" bordercolor="#FF000000">
+						<Button name="UpdateFWInfoButton"  height="50" padding="10,5,10,0" vcenter="true" center="true" bordercolor="#FF0078D7" text="获取固件信息" font="1" textcolor="#FF386382" bkcolor="#FFE1E1E1" hotbkcolor="#FFE9F1FB" pushedbkcolor="#FFCCE4F7" disabledbkcolor="#FFCCCCCC"/>
+						<Label name="RunningMode" text="当前运行固件: Unknown" padding="10,5,0,0" height="35" vcenter="true" font="1"/>
+						<Label name="DeviceId" text="设备ID: Unknown" padding="10,5,0,0" height="35" vcenter="true" font="1"/>
+						<HorizontalLayout height="40">
+							<Label text="选择下载分区：" padding="10,5,0,0" height="35" vcenter="true" font="1" visible="false"/>		
+							<Combo name="DownLoadAppCombo" width="110" height="25" padding="5,7,0,0" vcenter="true" textpadding="1,1,1,1" visible="false">		
+							</Combo>
+						</HorizontalLayout>		
+						
+						<Button name="PathButton" width="200" height="40" padding="10,10,10,0" vcenter="true" center="true" bordercolor="#FF0078D7" text="选择bin文件路径" font="1" textcolor="#FF386382" bkcolor="#FFE1E1E1" hotbkcolor="#FFE9F1FB" pushedbkcolor="#FFCCE4F7" disabledbkcolor="#FFCCCCCC"/>					
+						<Control height= "5"/>
+						<RichEdit name="DownloadFilePath" text="" height="90" menu="false" padding="10,0,0,0" bordersize="1,1,1,1"  bordercolor="#FF919191" vcenter="true"/>							
+						
+						<Control height= "5"/>
+						<HorizontalLayout height="50">
+							<Control />
+							<Button name="DownloadButton" width="100" height="50" enabled="true" padding="10,0,10,0" vcenter="true" center="true" bordercolor="#FF0078D7" text="下载" font="1" textcolor="#FF386382" bkcolor="#FFE1E1E1" hotbkcolor="#FFE9F1FB" pushedbkcolor="#FFCCE4F7" disabledbkcolor="#FFCCCCCC"/>
+						</HorizontalLayout>
+						<Control height= "5"/>
+						
+					</VerticalLayout>
+				
+					<VerticalLayout inset="4,0,4,4" >
+						<Button name="ClearEditButton" width="150" height="30" padding="5,5,0,0" vcenter="true" center="true" bordercolor="#FF0078D7" text="清空提示信息" font="1" textcolor="#FF386382" bkcolor="#FFE1E1E1" hotbkcolor="#FFE9F1FB" pushedbkcolor="#FFCCE4F7" disabledbkcolor="#FFCCCCCC"/>					
+						<RichEdit name="DownloadInfoEdit" bkcolor="#FFFFFFFF" inset="2,2,2,0" readonly="false" padding="5,5,0,0" bordersize="1,1,1,1"  bordercolor="#FF919191" vscrollbar="true" autovscroll="true" />					
+						<VerticalLayout name="DownloadingInfoLable" visible="false">
+							<Label name="FileSize" text="bin文件大小：--" padding="10,5,0,0" height="35" vcenter="true" font="1"/>
+							<Label name="FileVerifyNum" text="校验和：--" padding="10,5,0,0" height="35" vcenter="true" font="1"/>
+							<Label name="DownloadProgressText" text="下载进度：0%" padding="10,5,0,0" height="35" vcenter="true" font="1"/>
+							<Progress name="DownloadProgress" padding="10,5,0,0" bkimage="img\progress_back.png"  foreimage="img\progress_fore.png" min="0" max="100" value="0" maxheight="7" />
+						</VerticalLayout>
+					</VerticalLayout>
+				</HorizontalLayout>
+		
+			</VerticalLayout>
+		</HorizontalLayout>
+		
+	</VerticalLayout>
+</Window>

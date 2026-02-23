@@ -1,0 +1,36 @@
+2024/01/08 14:18:14.805 => Stop Realtime data show.
+2024/01/08 14:18:15.453 => Stop Realtime data show.
+2024/01/08 14:18:16.095 => Stop Noise scan.
+2024/01/08 14:18:18.773 => Stop Realtime data show.
+2024/01/08 14:18:25.498 => Stop Realtime data show.
+2024/01/08 14:18:30.919 => Stop Noise scan.
+2024/01/08 14:20:18.211 => CloseSerial: mSerialFile=0xffffffff
+2024/01/08 14:20:18.211 => Prepare Open Serial: Com=\\.\COM6 BaudRate=115200
+2024/01/08 14:20:18.229 => OpenSerial: Com=\\.\COM6 BaudRate=115200, Success=1, mSerialFile=0x000009bc
+2024/01/08 14:20:18.244 => protocol version = 2, send_recv buffer size = 32
+2024/01/08 14:20:18.420 => protocol version = 2, send_recv buffer size = 32
+2024/01/08 14:20:18.436 => ReadVersion Return: v1.5.9_0.0
+2024/01/08 14:20:18.451 => ReadSerialNumber Return: FFFFFFFF
+2024/01/08 14:20:18.563 => ReadSetting_RadarOperatorConfig, result: Success
+2024/01/08 14:20:55.208 => Start Realtime data show.
+2024/01/08 14:20:55.209 => thread create success, thread handle=0x000009d0, id=360, name=ReadData
+2024/01/08 14:20:55.209 => thread information, name=ReadData, tid=360(0x00000168)
+2024/01/08 14:20:55.209 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/08 14:20:55.369 => protocol version = 2, send_recv buffer size = 32
+2024/01/08 14:21:12.563 => prepare exit thread..., name=ReadData, tid=360(0x00000168)
+2024/01/08 14:21:12.602 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/08 14:21:12.778 => protocol version = 2, send_recv buffer size = 32
+2024/01/08 14:21:12.809 => thread exit, name=ReadData, tid=360(0x00000168)
+2024/01/08 14:21:12.809 => thread exit over, name=ReadData, tid=360(0x00000168)
+2024/01/08 14:21:12.811 => Stop Realtime data show.
+2024/01/08 14:22:55.856 => Stop Realtime data show.
+2024/01/08 14:22:55.856 => Stop Noise scan.
+2024/01/08 14:22:55.856 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/08 14:22:56.016 => protocol version = 2, send_recv buffer size = 32
+2024/01/08 14:22:56.048 => Cancel Read Data
+2024/01/08 14:22:56.048 => CloseSerial: mSerialFile=0x000009bc
+2024/01/08 14:42:12.677 => Stop Realtime data show.
+2024/01/08 14:42:12.678 => Stop Noise scan.
+2024/01/08 14:42:12.697 => Cancel Read Data
+2024/01/08 14:42:12.697 => CloseSerial: mSerialFile=0xffffffff
+2024/01/08 14:42:12.697 => CloseSerial: mSerialFile=0xffffffff

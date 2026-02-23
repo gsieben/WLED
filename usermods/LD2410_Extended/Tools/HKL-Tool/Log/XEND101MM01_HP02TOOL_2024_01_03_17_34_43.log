@@ -1,0 +1,30 @@
+2024/01/03 17:34:45.716 => Stop Realtime data show.
+2024/01/03 17:34:47.271 => CloseSerial: mSerialFile=0xffffffff
+2024/01/03 17:34:47.271 => Prepare Open Serial: Com=\\.\COM6 BaudRate=115200
+2024/01/03 17:34:47.288 => OpenSerial: Com=\\.\COM6 BaudRate=115200, Success=1, mSerialFile=0x00000934
+2024/01/03 17:34:47.303 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/03 17:34:47.479 => protocol version = 2, send_recv buffer size = 32
+2024/01/03 17:34:47.495 => ReadVersion Return: v1.5.9_0.0
+2024/01/03 17:34:47.511 => ReadSerialNumber Return: FFFFFFFF
+2024/01/03 17:34:47.623 => ReadSetting_RadarOperatorConfig, result: Success
+2024/01/03 17:34:49.185 => Start Realtime data show.
+2024/01/03 17:34:49.186 => thread create success, thread handle=0x0000093c, id=38632, name=ReadData
+2024/01/03 17:34:49.186 => thread information, name=ReadData, tid=38632(0x000096e8)
+2024/01/03 17:34:49.186 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/03 17:34:49.350 => protocol version = 2, send_recv buffer size = 32
+2024/01/03 17:58:46.110 => prepare exit thread..., name=ReadData, tid=38632(0x000096e8)
+2024/01/03 17:58:46.125 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/03 17:58:46.301 => protocol version = 2, send_recv buffer size = 32
+2024/01/03 17:58:46.333 => thread exit, name=ReadData, tid=38632(0x000096e8)
+2024/01/03 17:58:46.333 => thread exit over, name=ReadData, tid=38632(0x000096e8)
+2024/01/03 17:58:46.336 => Stop Realtime data show.
+2024/01/03 17:58:46.785 => Stop Realtime data show.
+2024/01/03 17:58:46.785 => Stop Realtime data show.
+2024/01/03 17:58:46.787 => Stop Noise scan.
+2024/01/03 17:58:46.794 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2024/01/03 17:58:46.966 => protocol version = 2, send_recv buffer size = 32
+2024/01/03 17:58:46.999 => Cancel Read Data
+2024/01/03 17:58:46.999 => CloseSerial: mSerialFile=0x00000934
+2024/01/03 17:58:47.115 => Cancel Read Data
+2024/01/03 17:58:47.115 => CloseSerial: mSerialFile=0xffffffff
+2024/01/03 17:58:47.115 => CloseSerial: mSerialFile=0xffffffff

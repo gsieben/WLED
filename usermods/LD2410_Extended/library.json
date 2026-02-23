@@ -1,0 +1,7 @@
+{
+  "name": "LD2410_Extended",
+  "build": { "libArchive": false },
+  "dependencies": {
+    "iavorvel/MyLD2410":"^1.2.8"
+  }
+}

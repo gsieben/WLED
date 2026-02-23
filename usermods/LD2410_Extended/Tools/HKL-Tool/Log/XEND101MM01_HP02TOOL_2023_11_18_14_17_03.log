@@ -1,0 +1,52 @@
+2023/11/18 14:17:08.080 => CloseSerial: mSerialFile=0xffffffff
+2023/11/18 14:17:08.080 => Prepare Open Serial: Com=\\.\COM6 BaudRate=115200
+2023/11/18 14:17:08.091 => OpenSerial: Com=\\.\COM6 BaudRate=115200, Success=1, mSerialFile=0x0000092c
+2023/11/18 14:17:08.106 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:17:08.282 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:17:08.297 => ReadVersion Return: v1.5.5_0.0
+2023/11/18 14:17:08.314 => ReadSerialNumber Return: FFFFFFFF
+2023/11/18 14:17:08.426 => ReadSetting_RadarOperatorConfig, result: Success
+2023/11/18 14:17:09.241 => Start Realtime data show.
+2023/11/18 14:17:09.242 => thread create success, thread handle=0x00000940, id=23264, name=ReadData
+2023/11/18 14:17:09.242 => thread information, name=ReadData, tid=23264(0x00005ae0)
+2023/11/18 14:17:09.242 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2023/11/18 14:17:09.405 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:17:33.859 => prepare exit thread..., name=ReadData, tid=23264(0x00005ae0)
+2023/11/18 14:17:33.944 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2023/11/18 14:17:34.119 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:17:34.152 => thread exit, name=ReadData, tid=23264(0x00005ae0)
+2023/11/18 14:17:34.152 => thread exit over, name=ReadData, tid=23264(0x00005ae0)
+2023/11/18 14:17:34.156 => Stop Realtime data show.
+2023/11/18 14:17:41.340 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2023/11/18 14:17:41.515 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:17:41.708 => WriteSetting_RadarOperatorConfig, result: Success
+2023/11/18 14:17:45.024 => Start Realtime data show.
+2023/11/18 14:17:45.025 => thread create success, thread handle=0x00000b68, id=29232, name=ReadData
+2023/11/18 14:17:45.025 => thread information, name=ReadData, tid=29232(0x00007230)
+2023/11/18 14:17:45.025 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A002
+2023/11/18 14:17:45.201 => protocol version = 2, send_recv buffer size = 32
+2023/11/18 14:18:01.205 => prepare exit thread..., name=ReadData, tid=29232(0x00007230)
+2023/11/18 14:18:01.384 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 18, has write 0
+2023/11/18 14:18:01.540 => WriteOnePacket write 0 bytes, total need write 12, has write 0
+2023/11/18 14:18:01.540 => thread exit, name=ReadData, tid=29232(0x00007230)
+2023/11/18 14:18:01.540 => thread exit over, name=ReadData, tid=29232(0x00007230)
+2023/11/18 14:18:01.540 => Stop Realtime data show.
+2023/11/18 14:18:01.540 => Stop Realtime data show.
+2023/11/18 14:18:01.541 => Stop Noise scan.
+2023/11/18 14:18:01.542 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 14, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 18, has write 0
+2023/11/18 14:18:01.700 => WriteOnePacket write 0 bytes, total need write 12, has write 0
+2023/11/18 14:18:01.700 => Cancel Read Data
+2023/11/18 14:18:01.700 => CloseSerial: mSerialFile=0x0000092c
+2023/11/18 14:18:01.700 => Cancel Read Data
+2023/11/18 14:18:01.700 => CloseSerial: mSerialFile=0xffffffff
+2023/11/18 14:18:01.700 => CloseSerial: mSerialFile=0xffffffff

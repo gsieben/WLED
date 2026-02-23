@@ -1,0 +1,66 @@
+2026/01/26 17:37:55.574 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:37:55.574 => Prepare Open Serial: Com=\\.\COM7 BaudRate=115200
+2026/01/26 17:37:55.580 => OpenSerial: Com=\\.\COM7 BaudRate=115200, Success=1, mSerialFile=0x00000714
+2026/01/26 17:37:57.580 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:37:59.738 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:01.741 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:03.741 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:05.741 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:05.741 => Cancel Read Data
+2026/01/26 17:38:05.741 => CloseSerial: mSerialFile=0x00000714
+2026/01/26 17:38:25.333 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:38:25.333 => Prepare Open Serial: Com=\\.\COM7 BaudRate=115200
+2026/01/26 17:38:25.347 => OpenSerial: Com=\\.\COM7 BaudRate=115200, Success=1, mSerialFile=0x00000744
+2026/01/26 17:38:27.348 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:29.502 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:31.502 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:33.503 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:35.503 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:38:35.503 => Cancel Read Data
+2026/01/26 17:38:35.503 => CloseSerial: mSerialFile=0x00000744
+2026/01/26 17:39:44.455 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:39:44.455 => Prepare Open Serial: Com=\\.\COM7 BaudRate=256000
+2026/01/26 17:39:44.458 => OpenSerial: Com=\\.\COM7 BaudRate=256000, Success=1, mSerialFile=0x00000764
+2026/01/26 17:39:46.459 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:39:48.618 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:39:50.618 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:39:52.619 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:39:54.621 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:39:54.621 => Cancel Read Data
+2026/01/26 17:39:54.621 => CloseSerial: mSerialFile=0x00000764
+2026/01/26 17:41:02.580 => Stop Realtime data show.
+2026/01/26 17:41:03.769 => Stop Realtime data show.
+2026/01/26 17:41:04.205 => Stop Noise scan.
+2026/01/26 17:41:13.321 => thread create success, thread handle=0x00000700, id=34652, name=Download
+2026/01/26 17:41:13.321 => thread information, name=Download, tid=34652(0x0000875c)
+2026/01/26 17:41:13.323 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:41:13.323 => Prepare Open Serial: Com=\\.\COM7 BaudRate=256000
+2026/01/26 17:41:13.326 => OpenSerial: Com=\\.\COM7 BaudRate=256000, Success=1, mSerialFile=0x00000710
+2026/01/26 17:41:14.330 => Cancel Read Data
+2026/01/26 17:41:14.330 => CloseSerial: mSerialFile=0x00000710
+2026/01/26 17:41:14.446 => thread exit, name=Download, tid=34652(0x0000875c)
+2026/01/26 17:41:18.717 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:41:18.717 => Prepare Open Serial: Com=\\.\COM7 BaudRate=256000
+2026/01/26 17:41:18.735 => OpenSerial: Com=\\.\COM7 BaudRate=256000, Success=1, mSerialFile=0x00000790
+2026/01/26 17:41:20.737 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:41:22.894 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:41:24.896 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:41:26.897 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:41:28.898 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/01/26 17:41:28.898 => Cancel Read Data
+2026/01/26 17:41:28.898 => CloseSerial: mSerialFile=0x00000790
+2026/01/26 17:44:02.406 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:44:02.406 => Prepare Open Serial: Com=\\.\COM7 BaudRate=256000
+2026/01/26 17:44:02.406 => Open \\.\COM7 failed:2
+2026/01/26 17:44:02.406 => OpenSerial: Com=\\.\COM7 BaudRate=256000, Success=0, mSerialFile=0xffffffff
+2026/01/26 17:44:02.406 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:44:38.794 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:44:38.794 => Prepare Open Serial: Com=\\.\COM3 BaudRate=256000
+2026/01/26 17:44:38.794 => Open \\.\COM3 failed:5
+2026/01/26 17:44:38.794 => OpenSerial: Com=\\.\COM3 BaudRate=256000, Success=0, mSerialFile=0xffffffff
+2026/01/26 17:44:38.794 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:46:41.123 => Stop Realtime data show.
+2026/01/26 17:46:41.124 => Stop Noise scan.
+2026/01/26 17:46:41.125 => Cancel Read Data
+2026/01/26 17:46:41.125 => CloseSerial: mSerialFile=0xffffffff
+2026/01/26 17:46:41.125 => CloseSerial: mSerialFile=0xffffffff
