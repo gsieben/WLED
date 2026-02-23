@@ -1,3 +1,11 @@
+/*
+Bufixes by GeoGab:
+- Speichert settings nicht richtig
+
+
+*/
+
+
 #include "wled.h"
 #include <ld2410.h>
 
@@ -15,14 +23,15 @@ class LD2410Usermod : public Usermod {
     unsigned long lastTime = 0;
     unsigned long last_mqtt_sent = 0;
 
-    int8_t default_uart_rx = 19;
-    int8_t default_uart_tx = 18;
+    int8_t default_uart_rx = LD2410_V2_RXPIN;    // GeoGab: Changed
+    int8_t default_uart_tx = LD2410_V2_TXPIN;    // GeoGab: Changed
+
 
 
     String mqttMovementTopic = F("");
     String mqttStationaryTopic = F("");
     bool mqttInitialized = false;
-    bool HomeAssistantDiscovery = true; // Publish Home Assistant Discovery messages
+    bool HomeAssistantDiscovery = LD2410_V2_HA_DISCOVERY;         // GeoGab: changed: Publish Home Assistant Discovery messages
 
 
     ld2410 radar;
@@ -58,22 +67,22 @@ class LD2410Usermod : public Usermod {
       
       StaticJsonDocument<600> doc;
       
-      doc[F("name")] = String(serverDescription) + F(" Module");
-      doc[F("state_topic")] = topic;
+      doc[F("name")] = name;                                      // BUGFIX by GeoGab. Device Name sollte nicht mit im Namen des Devices sein
+      doc[F("state_class")] = "measurement";                      // BUGFIX by GeoGab. Was missing for statistics   
       doc[F("unique_id")] = String(mqttClientID) + name;
       if (unitOfMeasurement != "")
         doc[F("unit_of_measurement")] = unitOfMeasurement;
       if (deviceClass != "")
-        doc[F("device_class")] = deviceClass;
+      doc[F("device_class")] = deviceClass;
       doc[F("expire_after")] = 1800;
       doc[F("payload_off")] = "OFF";
       doc[F("payload_on")] = "ON";
 
       JsonObject device = doc.createNestedObject(F("device")); // attach the sensor to the same device
       device[F("name")] = serverDescription;
-      device[F("identifiers")] = "wled-sensor-" + String(mqttClientID);
-      device[F("manufacturer")] = F("WLED");
-      device[F("model")] = F("FOSS");
+      device[F("identifiers")] = "" + String(mqttClientID);         // BUGFIX by GeoGab: Device Identifier sollte nicht mehr als der Devicename sein
+      device[F("manufacturer")] = F(WLED_BRAND);                    // BUGFIX by GeoGab: 
+      device[F("model")] = F(WLED_PRODUCT_NAME);               // BUGFIX by GeoGab: 
       device[F("sw_version")] = versionString;
 
       String temp;
@@ -212,7 +221,7 @@ class LD2410Usermod : public Usermod {
 
 
 // add more strings here to reduce flash memory usage
-const char LD2410Usermod::_name[]    PROGMEM = "LD2410Usermod";
+const char LD2410Usermod::_name[]    PROGMEM = "LD2410";   // GeoGab Changes
 const char LD2410Usermod::_enabled[] PROGMEM = "enabled";
 
 

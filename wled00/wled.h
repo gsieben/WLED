@@ -7,7 +7,7 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2506160
+#define VERSION 2601201 // year month day build
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -443,8 +443,8 @@ WLED_GLOBAL byte irEnabled      _INIT(IRTYPE); // Infrared receiver
 WLED_GLOBAL bool irApplyToAllSelected _INIT(true); //apply IR or ESP-NOW to all selected segments
 
 #ifndef WLED_DISABLE_ALEXA
-WLED_GLOBAL bool alexaEnabled _INIT(false);                       // enable device discovery by Amazon Echo
-WLED_GLOBAL char alexaInvocationName[33] _INIT("Light");          // speech control name of device. Choose something voice-to-text can understand
+WLED_GLOBAL bool alexaEnabled _INIT(ALEXA_ACTIVE);                // GeoGab: Changed | enable device discovery by Amazon Echo
+WLED_GLOBAL char alexaInvocationName[33] _INIT(ALEXA_NAME);       // GeoGab: Changed | speech control name of device. Choose something voice-to-text can understand
 WLED_GLOBAL byte alexaNumPresets _INIT(0);                        // number of presets to expose to Alexa, starting from preset 1, up to 9
 #endif
 
@@ -498,14 +498,14 @@ WLED_GLOBAL unsigned long lastMqttReconnectAttempt _INIT(0);  // used for other 
     #define MQTT_MAX_SERVER_LEN 32
   #endif
 WLED_GLOBAL AsyncMqttClient *mqtt _INIT(NULL);
-WLED_GLOBAL bool mqttEnabled _INIT(false);
-WLED_GLOBAL char mqttStatusTopic[MQTT_MAX_TOPIC_LEN + 8] _INIT("");         // this must be global because of async handlers
-WLED_GLOBAL char mqttDeviceTopic[MQTT_MAX_TOPIC_LEN + 1] _INIT("");         // main MQTT topic (individual per device, default is wled/mac)
-WLED_GLOBAL char mqttGroupTopic[MQTT_MAX_TOPIC_LEN + 1]  _INIT("wled/all"); // second MQTT topic (for example to group devices)
-WLED_GLOBAL char mqttServer[MQTT_MAX_SERVER_LEN + 1]     _INIT("");         // both domains and IPs should work (no SSL)
-WLED_GLOBAL char mqttUser[41] _INIT("");                   // optional: username for MQTT auth
-WLED_GLOBAL char mqttPass[65] _INIT("");                   // optional: password for MQTT auth
-WLED_GLOBAL char mqttClientID[41] _INIT("");               // override the client ID
+WLED_GLOBAL bool mqttEnabled _INIT(MQTT_ACTIVE);                                      // GeoGab: Changed enable MQTT
+WLED_GLOBAL char mqttStatusTopic[MQTT_MAX_TOPIC_LEN + 8] _INIT("");                   // this must be global because of async handlers
+WLED_GLOBAL char mqttDeviceTopic[MQTT_MAX_TOPIC_LEN + 1] _INIT(DEFAULT_MQTT_TOPIC);   // GeoGab: Changed |  main MQTT topic (individual per device, default is wled/mac)
+WLED_GLOBAL char mqttGroupTopic[MQTT_MAX_TOPIC_LEN + 1]  _INIT("wled/all");           // second MQTT topic (for example to group devices)
+WLED_GLOBAL char mqttServer[MQTT_MAX_SERVER_LEN + 1]     _INIT(MQTT_BROKER );         // GeoGab: Changed | both domains and IPs should work (no SSL)
+WLED_GLOBAL char mqttUser[41] _INIT(MQTT_USER_NAME);                                  // GeoGab: Changed | optional: username for MQTT auth
+WLED_GLOBAL char mqttPass[65] _INIT(MQTT_PASS);                                       // GeoGab: Changed | optional: password for MQTT auth
+WLED_GLOBAL char mqttClientID[41] _INIT(DEFAULT_MQTT_CLIENT_ID);                      // GeoGab: Changed |override the client ID
 WLED_GLOBAL uint16_t mqttPort _INIT(1883);
 WLED_GLOBAL bool retainMqttMsg _INIT(false);               // retain brightness and color
 #define WLED_MQTT_CONNECTED (mqtt != nullptr && mqtt->connected())

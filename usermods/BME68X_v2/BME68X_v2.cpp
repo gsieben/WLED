@@ -2,42 +2,14 @@
  * @file usermod_BMW68X.cpp
  * @author Gabriel A. Sieben  (GeoGab)
  * @brief Usermod for WLED to implement the BME680/BME688 sensor
- * @version 1.0.2
- * @date 28 March 2025
+ * @version 1.0.3
+ * @date 15 Jan 2026
  */
 
- #define UMOD_DEVICE "ESP32"                 			 // NOTE - Set your hardware here
- #define HARDWARE_VERSION "1.0"              			 // NOTE - Set your hardware version here
- #define UMOD_BME680X_SW_VERSION "1.0.2"     			 // NOTE - Version of the User Mod
- #define CALIB_FILE_NAME "/BME680X-Calib.hex"			 // NOTE - Calibration file name
- #define UMOD_NAME "BME680X"                 			 // NOTE - User module name
- #define UMOD_DEBUG_NAME "UM-BME680X: "      			 // NOTE - Debug print module name addon
- 
- #define ESC "\033"
- #define ESC_CSI ESC "["
- #define ESC_STYLE_RESET ESC_CSI "0m"
- #define ESC_CURSOR_COLUMN(n) ESC_CSI #n "G"
- 
- #define ESC_FGCOLOR_BLACK ESC_CSI "30m"
- #define ESC_FGCOLOR_RED ESC_CSI "31m"
- #define ESC_FGCOLOR_GREEN ESC_CSI "32m"
- #define ESC_FGCOLOR_YELLOW ESC_CSI "33m"
- #define ESC_FGCOLOR_BLUE ESC_CSI "34m"
- #define ESC_FGCOLOR_MAGENTA ESC_CSI "35m"
- #define ESC_FGCOLOR_CYAN ESC_CSI "36m"
- #define ESC_FGCOLOR_WHITE ESC_CSI "37m"
- #define ESC_FGCOLOR_DEFAULT ESC_CSI "39m"
- 
- /* Debug Print Special Text */
- #define INFO_COLUMN ESC_CURSOR_COLUMN(60)
- #define GOGAB_OK INFO_COLUMN "[" ESC_FGCOLOR_GREEN "OK" ESC_STYLE_RESET "]"
- #define GOGAB_FAIL INFO_COLUMN "[" ESC_FGCOLOR_RED "FAIL" ESC_STYLE_RESET "]"
- #define GOGAB_WARN INFO_COLUMN "[" ESC_FGCOLOR_YELLOW "WARN" ESC_STYLE_RESET "]"
- #define GOGAB_DONE INFO_COLUMN "[" ESC_FGCOLOR_CYAN "DONE" ESC_STYLE_RESET "]"
- 
  #include "bsec.h" // Bosch sensor library
  #include "wled.h"
  #include <Arduino.h>
+ #include "BME68X_v2.h"
  
  /* UsermodBME68X class definition */
  class UsermodBME68X : public Usermod {
@@ -47,14 +19,14 @@
 	 uint16_t getId();
 	 void loop();								// Loop of the user module called by wled main in loop
 	 void setup();								// Setup of the user module called by wled main
-	 void addToConfig(JsonObject& root);			// Extends the settings/user module settings page to include the user module requirements. The settings are written from the wled core to the configuration file.
+	 void addToConfig(JsonObject& root);		// Extends the settings/user module settings page to include the user module requirements. The settings are written from the wled core to the configuration file.
 	 void appendConfigData();					// Adds extra info to the config page of weld
 	 bool readFromConfig(JsonObject& root);		// Reads config values
 	 void addToJsonInfo(JsonObject& root);		// Adds user module info to the weld info page
  
 	 /* Wled internal functions which can be used by the core or other user mods */
 	 inline float getTemperature();				// Get Temperature in the selected scale of °C or °F
-	 inline float getHumidity();					// ...
+	 inline float getHumidity();				// ...
 	 inline float getPressure();
 	 inline float getGasResistance();
 	 inline float getAbsoluteHumidity();
@@ -88,34 +60,34 @@
 	 /*** V A R I A B L E s  &  C O N S T A N T s ***/
 	 /* Private: Settings of Usermod BME68X */
 	 struct settings_t {
-		 bool enabled;               					// true if user module is active
-		 byte I2cadress; 	            				// Depending on the manufacturer, the BME680 has the address 0x76 or 0x77
-		 uint8_t Interval; 	             				// Interval of reading sensor data in seconds
-		 uint16_t MaxAge;	            				// Force the publication of the value of a sensor after these defined seconds at the latest
-		 bool pubAcc; 	        						// Publish the accuracy values
-		 bool publishSensorState;  	     				// Publisch the sensor calibration state
-		 bool publishAfterCalibration ;  				// The IAQ/CO2/VOC/GAS value are only valid after the sensor has been calibrated. If this switch is active, the values are only sent after calibration
-		 bool PublischChange;		       				// Publish values even when they have not changed
-		 bool PublishIAQVerbal; 		     				// Publish Index of Air Quality (IAQ) classification Verbal
-		 bool PublishStaticIAQVerbal;					// Publish Static Index of Air Quality (Static IAQ) Verbal
-		 byte tempScale; 	               				// 0 -> Use Celsius, 1-> Use Fahrenheit
-		 float tempOffset; 	             				// Temperature Offset
-		 bool HomeAssistantDiscovery; 					// Publish Home Assistant Device Information
-		 bool pauseOnActiveWled ;						// If this is set to true, the user mod ist not executed while wled is active
+		 bool enabled = GG_ENABLED;               					// true if user module is active
+		 byte I2cadress = GG_I2CADRESS; 	            			// Depending on the manufacturer, the BME680 has the address 0x76 or 0x77
+		 uint8_t Interval = GG_INTERVAL; 	             			// Interval of reading sensor data in seconds
+		 uint16_t MaxAge = GG_MAXAGE;	            				// Force the publication of the value of a sensor after these defined seconds at the latest
+		 bool pubAcc = GG_PUBACC; 	        						// Publish the accuracy values
+		 bool publishSensorState = GG_PUBLISHSENSORSTATE;  	     	// Publisch the sensor calibration state
+		 bool publishAfterCalibration = GG_PUBLISHAFTERCALIB;  		// The IAQ/CO2/VOC/GAS value are only valid after the sensor has been calibrated. If this switch is active, the values are only sent after calibration
+		 bool PublischChange = GG_PUBLISCHCHANGE;		       		// Publish values even when they have not changed
+		 bool PublishIAQVerbal = GG_PUBLISHIAQVERBAL; 		     	// Publish Index of Air Quality (IAQ) classification Verbal
+		 bool PublishStaticIAQVerbal = GG_PUBLISHSTATICIAQVERBAL;	// Publish Static Index of Air Quality (Static IAQ) Verbal
+		 byte tempScale = GG_TEMPSCALE; 	               			// 0 -> Use Celsius, 1-> Use Fahrenheit
+		 float tempOffset = GG_TEMPOFFSET; 	             			// Temperature Offset
+		 bool HomeAssistantDiscovery = GG_HOMEASSISTANTDISCOVERY; 	// Publish Home Assistant Device Information
+		 bool pauseOnActiveWled = GG_PAUSEONACTIVEWLED;				// If this is set to true, the user mod ist not executed while wled is active
 		 
 		 /* Decimal Places (-1 means inactive) */
 		 struct decimals_t {
-			 int8_t temperature;
-			 int8_t humidity;
-			 int8_t pressure;
-			 int8_t gasResistance;
-			 int8_t absHumidity;
-			 int8_t drewPoint;
-			 int8_t iaq;
-			 int8_t staticIaq;
-			 int8_t co2;
-			 int8_t Voc;
-			 int8_t gasPerc;
+			 int8_t temperature = GG_DECIMALS_TEMPERATURE;
+			 int8_t humidity = GG_DECIMALS_HUMIDITY;
+			 int8_t pressure = GG_DECIMALS_PRESSURE;
+			 int8_t gasResistance = GG_DECIMALS_GASRESISTANCE;
+			 int8_t absHumidity = GG_DECIMALS_ABSHUMIDITY;
+			 int8_t drewPoint = GG_DECIMALS_DREWPOINT;
+			 int8_t iaq = GG_DECIMALS_IAQ;
+			 int8_t staticIaq = GG_DECIMALS_STATICIAQ;
+			 int8_t co2 = GG_DECIMALS_CO2;
+			 int8_t Voc = GG_DECIMALS_VOC;
+			 int8_t gasPerc = GG_DECIMALS_GASPERC;
 		 } decimals;
 	 } settings;
  
@@ -197,9 +169,9 @@
 	 static const char _nameI2CAdr[];
 	 static const char _nameInterval[];
 	 static const char _nameMaxAge[];
+	 static const char _namePubAfterCalib[];
 	 static const char _namePubAc[];
 	 static const char _namePubSenState[];
-	 static const char _namePubAfterCalib[];
 	 static const char _namePublishChange[];
 	 static const char _nameTempScale[];
 	 static const char _nameTempOffset[];
@@ -257,11 +229,11 @@
  const char UsermodBME68X::_nameI2CAdr[] 		PROGMEM = "i2C Address";
  const char UsermodBME68X::_nameInterval[] 		PROGMEM = "Interval";
  const char UsermodBME68X::_nameMaxAge[] 		PROGMEM = "Max Age";
- const char UsermodBME68X::_namePublishChange[] 	PROGMEM = "Pub changes only";
- const char UsermodBME68X::_namePubAc[] 			PROGMEM = "Pub Accuracy";
+ const char UsermodBME68X::_namePubAfterCalib[] PROGMEM = "Pub After Calib";
+ const char UsermodBME68X::_namePublishChange[] PROGMEM = "Pub changes only";
+ const char UsermodBME68X::_namePubAc[] 		PROGMEM = "Pub Accuracy";
  const char UsermodBME68X::_namePubSenState[] 	PROGMEM = "Pub Calib State";
- const char UsermodBME68X::_namePubAfterCalib[] 	PROGMEM = "Pub After Calib";
- const char UsermodBME68X::_nameTempScale[] 		PROGMEM = "Temp Scale";
+ const char UsermodBME68X::_nameTempScale[] 	PROGMEM = "Temp Scale";
  const char UsermodBME68X::_nameTempOffset[] 	PROGMEM = "Temp Offset";
  const char UsermodBME68X::_nameHADisc[] 		PROGMEM = "HA Discovery";
  const char UsermodBME68X::_nameDelCalib[] 		PROGMEM = "Del Calibration Hist";
@@ -270,21 +242,21 @@
  /* Private: Sensor names / Sensor short name */
  const char UsermodBME68X::_nameTemp[] 			PROGMEM = "Temperature";
  const char UsermodBME68X::_nameHum[] 			PROGMEM = "Humidity";
- const char UsermodBME68X::_namePress[] 			PROGMEM = "Pressure";
+ const char UsermodBME68X::_namePress[] 		PROGMEM = "Pressure";
  const char UsermodBME68X::_nameGasRes[] 		PROGMEM = "Gas-Resistance";
  const char UsermodBME68X::_nameAHum[] 			PROGMEM = "Absolute-Humidity";
- const char UsermodBME68X::_nameDrewP[] 			PROGMEM = "Drew-Point";
+ const char UsermodBME68X::_nameDrewP[] 		PROGMEM = "Drew-Point";
  const char UsermodBME68X::_nameIaq[] 			PROGMEM = "IAQ";
  const char UsermodBME68X::_nameIaqVerb[] 		PROGMEM = "IAQ-Verbal";
- const char UsermodBME68X::_nameStaticIaq[] 		PROGMEM = "Static-IAQ";
- const char UsermodBME68X::_nameStaticIaqVerb[] 	PROGMEM = "Static-IAQ-Verbal";
+ const char UsermodBME68X::_nameStaticIaq[] 	PROGMEM = "Static-IAQ";
+ const char UsermodBME68X::_nameStaticIaqVerb[] PROGMEM = "Static-IAQ-Verbal";
  const char UsermodBME68X::_nameCo2[] 			PROGMEM = "CO2";
  const char UsermodBME68X::_nameVoc[] 			PROGMEM = "VOC";
  const char UsermodBME68X::_nameGasPer[] 		PROGMEM = "Gas-Percentage";
- const char UsermodBME68X::_nameIaqAc[] 			PROGMEM = "IAQ-Accuracy";
+ const char UsermodBME68X::_nameIaqAc[] 		PROGMEM = "IAQ-Accuracy";
  const char UsermodBME68X::_nameStaticIaqAc[] 	PROGMEM = "Static-IAQ-Accuracy";
- const char UsermodBME68X::_nameCo2Ac[] 			PROGMEM = "CO2-Accuracy";
- const char UsermodBME68X::_nameVocAc[] 			PROGMEM = "VOC-Accuracy";
+ const char UsermodBME68X::_nameCo2Ac[] 		PROGMEM = "CO2-Accuracy";
+ const char UsermodBME68X::_nameVocAc[] 		PROGMEM = "VOC-Accuracy";
  const char UsermodBME68X::_nameGasPerAc[] 		PROGMEM = "Gas-Percentage-Accuracy";
  const char UsermodBME68X::_nameStabStatus[] 	PROGMEM = "Stab-Status";
  const char UsermodBME68X::_nameRunInStatus[] 	PROGMEM = "Run-In-Status";
@@ -292,12 +264,12 @@
  /* Private Units */
  const char UsermodBME68X::_unitTemp[] 			PROGMEM = " "; 				// NOTE - Is set with the selectable temperature unit
  const char UsermodBME68X::_unitHum[] 			PROGMEM = "%";
- const char UsermodBME68X::_unitPress[] 			PROGMEM = "hPa";
+ const char UsermodBME68X::_unitPress[] 		PROGMEM = "hPa";
  const char UsermodBME68X::_unitGasres[] 		PROGMEM = "kΩ";
  const char UsermodBME68X::_unitAHum[] 			PROGMEM = "g/m³";
- const char UsermodBME68X::_unitDrewp[] 			PROGMEM = " "; 				// NOTE - Is set with the selectable temperature unit
+ const char UsermodBME68X::_unitDrewp[] 		PROGMEM = " "; 				// NOTE - Is set with the selectable temperature unit
  const char UsermodBME68X::_unitIaq[] 			PROGMEM = " ";   			// No unit
- const char UsermodBME68X::_unitStaticIaq[] 		PROGMEM = " ";				// No unit
+ const char UsermodBME68X::_unitStaticIaq[] 	PROGMEM = " ";				// No unit
  const char UsermodBME68X::_unitCo2[] 			PROGMEM = "ppm";
  const char UsermodBME68X::_unitVoc[] 			PROGMEM = "ppm"; 			
  const char UsermodBME68X::_unitGasPer[] 		PROGMEM = "%";
@@ -308,7 +280,7 @@
  
  /* Load Sensor Settings */
  const uint8_t UsermodBME68X::bsec_config_iaq[] = { 
-	 #include "config/generic_33v_3s_28d/bsec_iaq.txt"		// Allow 28 days for calibration because the WLED module normally stays in the same place anyway
+	 #include "config/generic_33v_3s_28d/bsec_iaq.txt"						// Allow 28 days for calibration because the WLED module normally stays in the same place anyway
  }; 	
  
  
@@ -320,12 +292,12 @@
   * @brief Called by WLED: Setup of the usermod
   */
  void UsermodBME68X::setup() {
-	 DEBUG_PRINTLN(F(UMOD_DEBUG_NAME ESC_FGCOLOR_CYAN "Initialize" ESC_STYLE_RESET));
+	 DEBUG_PRINTLN(F(GG_UMOD_DEBUG_NAME GG_ESC_FGCOLOR_CYAN "Initialize" GG_ESC_STYLE_RESET));
  
 	 /* Check, if i2c is activated */
 	 if (i2c_scl < 0 || i2c_sda < 0) {
 		 settings.enabled = false;												// Disable usermod once i2c is not running
-		 DEBUG_PRINTLN(F(UMOD_DEBUG_NAME "I2C is not activated. Please activate I2C first." GOGAB_FAIL));
+		 DEBUG_PRINTLN(F(GG_UMOD_DEBUG_NAME "I2C is not activated. Please activate I2C first." GG_GOGAB_FAIL));
 		 return;
 	 }
  
@@ -338,7 +310,7 @@
 	 /* Init Library*/
 	 iaqSensor.begin(settings.I2cadress, Wire); 									// BME68X_I2C_ADDR_LOW
 	 stringbuff = "BSEC library version " + String(iaqSensor.version.major) + "." + String(iaqSensor.version.minor) + "." + String(iaqSensor.version.major_bugfix) + "." + String(iaqSensor.version.minor_bugfix);
-	 DEBUG_PRINT(F(UMOD_NAME));
+	 DEBUG_PRINT(F(GG_UMOD_NAME));
 	 DEBUG_PRINTLN(F(stringbuff.c_str()));
  
 	 /* Init Sensor*/
@@ -349,7 +321,7 @@
 	 loadState();                                                 				// Load the old calibration data
 	 checkIaqSensorStatus();                                      				// Check the sensor status
 	 // HomeAssistantDiscovery();
-	 DEBUG_PRINTLN(F(INFO_COLUMN GOGAB_DONE));
+	 DEBUG_PRINTLN(F(GG_INFO_COLUMN GG_GOGAB_DONE));
  }
  
  /**
@@ -465,9 +437,9 @@
 	 ValuesPtr->temperature = 	roundf(iaqSensor.temperature * 			powf(10, settings.decimals.temperature)) /	powf(10, settings.decimals.temperature);	
 	 ValuesPtr->humidity = 		roundf(iaqSensor.humidity * 			powf(10, settings.decimals.humidity)) / 	powf(10, settings.decimals.humidity);
 	 ValuesPtr->pressure = 		roundf(iaqSensor.pressure * 			powf(10, settings.decimals.pressure)) / 	powf(10, settings.decimals.pressure)		/100;      	// Pa 2 hPa
-	 ValuesPtr->gasResistance = 	roundf(iaqSensor.gasResistance * 		powf(10, settings.decimals.gasResistance)) /powf(10, settings.decimals.gasResistance)	/1000;		// Ohm 2 KOhm
+	 ValuesPtr->gasResistance = roundf(iaqSensor.gasResistance * 		powf(10, settings.decimals.gasResistance)) /powf(10, settings.decimals.gasResistance)	/1000;		// Ohm 2 KOhm
 	 ValuesPtr->iaq = 			roundf(iaqSensor.iaq * 					powf(10, settings.decimals.iaq)) / 			powf(10, settings.decimals.iaq);   			
-	 ValuesPtr->staticIaq = 		roundf(iaqSensor.staticIaq * 			powf(10, settings.decimals.staticIaq)) / 	powf(10, settings.decimals.staticIaq);					
+	 ValuesPtr->staticIaq = 	roundf(iaqSensor.staticIaq * 			powf(10, settings.decimals.staticIaq)) / 	powf(10, settings.decimals.staticIaq);					
 	 ValuesPtr->co2 = 			roundf(iaqSensor.co2Equivalent * 		powf(10, settings.decimals.co2)) / 			powf(10, settings.decimals.co2);
 	 ValuesPtr->Voc = 			roundf(iaqSensor.breathVocEquivalent * 	powf(10, settings.decimals.Voc)) / 			powf(10, settings.decimals.Voc);
 	 ValuesPtr->gasPerc = 		roundf(iaqSensor.gasPercentage * 		powf(10, settings.decimals.gasPerc)) /		powf(10, settings.decimals.gasPerc);
@@ -518,12 +490,12 @@
   * @param bool Session Present
   */
  void UsermodBME68X::onMqttConnect(bool sessionPresent) {
-	 DEBUG_PRINTLN(UMOD_DEBUG_NAME "OnMQTTConnect event fired");
+	 DEBUG_PRINTLN(GG_UMOD_DEBUG_NAME "OnMQTTConnect event fired");
 	 HomeAssistantDiscovery();
  
 	 if (!flags.MqttInitialized) {
 		 flags.MqttInitialized=true;
-		 DEBUG_PRINTLN(UMOD_DEBUG_NAME "MQTT first connect");
+		 DEBUG_PRINTLN(GG_UMOD_DEBUG_NAME "MQTT first connect");
 	 }
  }
  
@@ -534,14 +506,14 @@
  void UsermodBME68X::HomeAssistantDiscovery() {
 	 if (!settings.HomeAssistantDiscovery || !flags.InitSuccessful || !settings.enabled) return; 									// Leave once HomeAssistant Discovery is inactive
  
-	 DEBUG_PRINTLN(UMOD_DEBUG_NAME ESC_FGCOLOR_CYAN "Creating HomeAssistant Discovery Mqtt-Entrys" ESC_STYLE_RESET);
+	 DEBUG_PRINTLN(GG_UMOD_DEBUG_NAME GG_ESC_FGCOLOR_CYAN "Creating HomeAssistant Discovery Mqtt-Entrys" GG_ESC_STYLE_RESET);
  
 	 /* Sensor Values */
 	 MQTT_PublishHASensor(_nameTemp,  		"TEMPERATURE", 				tempScale.c_str(), 	settings.decimals.temperature		); 		// Temperature
 	 MQTT_PublishHASensor(_namePress, 		"ATMOSPHERIC_PRESSURE", 	_unitPress, 		settings.decimals.pressure			); 		// Pressure
-	 MQTT_PublishHASensor(_nameHum, 			"HUMIDITY", 				_unitHum, 			settings.decimals.humidity			); 		// Humidity
+	 MQTT_PublishHASensor(_nameHum, 		"HUMIDITY", 				_unitHum, 			settings.decimals.humidity			); 		// Humidity
 	 MQTT_PublishHASensor(_nameGasRes,		"GAS", 						_unitGasres, 		settings.decimals.gasResistance		); 		// There is no device class for resistance in HA yet: https://developers.home-assistant.io/docs/core/entity/sensor/
-	 MQTT_PublishHASensor(_nameAHum,			"HUMIDITY", 				_unitAHum, 			settings.decimals.absHumidity		); 		// Absolute Humidity
+	 MQTT_PublishHASensor(_nameAHum,		"HUMIDITY", 				_unitAHum, 			settings.decimals.absHumidity		); 		// Absolute Humidity
 	 MQTT_PublishHASensor(_nameDrewP,		"TEMPERATURE", 				tempScale.c_str(), 	settings.decimals.drewPoint			); 		// Drew Point
 	 MQTT_PublishHASensor(_nameIaq,			"AQI", 						_unitIaq, 			settings.decimals.iaq				); 		// IAQ
 	 MQTT_PublishHASensor(_nameIaqVerb,		"", 						_unitNone,			settings.PublishIAQVerbal, 			2); 	// IAQ Verbal / Set Option 2 (text sensor)
@@ -556,12 +528,12 @@
 	 MQTT_PublishHASensor(_nameStaticIaqAc,	"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.staticIaq * settings.pubAcc, 	1);
 	 MQTT_PublishHASensor(_nameCo2Ac,		"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.co2 * settings.pubAcc, 			1);
 	 MQTT_PublishHASensor(_nameVocAc,		"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.Voc * settings.pubAcc, 			1);
-	 MQTT_PublishHASensor(_nameGasPerAc,		"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.gasPerc * settings.pubAcc, 		1);
+	 MQTT_PublishHASensor(_nameGasPerAc,	"", 					_unitNone, 			settings.pubAcc - 1 + settings.decimals.gasPerc * settings.pubAcc, 		1);
 	 
 	 MQTT_PublishHASensor(_nameStabStatus,	"", 						_unitNone, 			settings.publishSensorState - 1, 1);
 	 MQTT_PublishHASensor(_nameRunInStatus,	"", 						_unitNone, 			settings.publishSensorState - 1, 1);
  
-	 DEBUG_PRINTLN(UMOD_DEBUG_NAME GOGAB_DONE);
+	 DEBUG_PRINTLN(GG_UMOD_DEBUG_NAME GG_GOGAB_DONE);
  }
  
  /**
@@ -576,16 +548,16 @@
   * @param option Set to true if the sensor is part of diagnostics (dafault 0)
   */
  void UsermodBME68X::MQTT_PublishHASensor(const String& name, const String& deviceClass, const String& unitOfMeasurement, const int8_t& digs, const uint8_t& option) {
-	 DEBUG_PRINT(UMOD_DEBUG_NAME "\t" + name);
+	 DEBUG_PRINT(GG_UMOD_DEBUG_NAME "\t" + name);
 	 
 	 snprintf_P(charbuffer, 127, PSTR("%s/%s"), mqttDeviceTopic, name.c_str());				// Current values will be posted here
 	 String basetopic = String(_hadtopic) + mqttClientID + F("/") + name + F("/config");   	// This is the place where Home Assinstant Discovery will check for new devices
- 
+
 	 if (digs < 0) { // if digs are set to -1 -> entry deactivated
 		 /* Delete MQTT Entry */
 		 if (WLED_MQTT_CONNECTED) {
 			 mqtt->publish(basetopic.c_str(), 0, true, "");							// Send emty entry to delete
-			 DEBUG_PRINTLN(INFO_COLUMN "deleted");
+			 DEBUG_PRINTLN(GG_INFO_COLUMN "deleted");
 		 }
 	 } else {
 		 /* Create all the necessary HAD MQTT entrys - see: https://www.home-assistant.io/integrations/sensor.mqtt/#configuration-variables */
@@ -599,9 +571,9 @@
 		 device[F("name")] = serverDescription;
 		 device[F("identifiers")] = String(mqttClientID);
 		 device[F("manufacturer")] = F("WLED");
-		 device[F("model")] = UMOD_DEVICE;
+		 device[F("model")] = GG_UMOD_DEVICE;
 		 device[F("sw_version")] = versionString;
-		 device[F("hw_version")] = F(HARDWARE_VERSION);
+		 device[F("hw_version")] = F(GG_HARDWARE_VERSION);
  
 		 if (deviceClass != "") jdoc[F("device_class")] = deviceClass; 						// The type/class of the sensor to set the icon in the frontend. The device_class can be null
 		 if (option == 1) jdoc[F("entity_category")] = "diagnostic"; 						// Option 1: The category of the entity | When set, the entity category must be diagnostic for sensors.
@@ -620,7 +592,7 @@
  
 		 if (WLED_MQTT_CONNECTED) {                                         					// Check if MQTT Connected, otherwise it will crash the 8266
 			 mqtt->publish(basetopic.c_str(), 0, true, stringbuff.c_str()); 					// Publish the HA discovery sensor entry
-			 DEBUG_PRINTLN(INFO_COLUMN "published");
+			 DEBUG_PRINTLN(GG_INFO_COLUMN "published");
 		 }
 	 }
  }
@@ -630,7 +602,7 @@
   * @param JsonObject Pointer
   */
  void UsermodBME68X::addToJsonInfo(JsonObject& root) {
-	 //DEBUG_PRINTLN(F(UMOD_DEBUG_NAME "Add to info event"));
+	 //DEBUG_PRINTLN(F(GG_UMOD_DEBUG_NAME "Add to info event"));
 	 JsonObject user = root[F("u")];
  
 	 if (user.isNull())
@@ -648,23 +620,23 @@
 		 temperature_json.add(F("disabled"));
 	 }
 	 else {
-		 InfoHelper(user, _nameTemp, 		ValuesPtr->temperature, 		settings.decimals.temperature, 		tempScale.c_str());
+		 InfoHelper(user, _nameTemp, 			ValuesPtr->temperature, 		settings.decimals.temperature, 		tempScale.c_str());
 		 InfoHelper(user, _nameHum, 			ValuesPtr->humidity, 			settings.decimals.humidity, 		_unitHum);
-		 InfoHelper(user, _namePress, 		ValuesPtr->pressure, 			settings.decimals.pressure, 		_unitPress);
-		 InfoHelper(user, _nameGasRes,		ValuesPtr->gasResistance, 		settings.decimals.gasResistance,	_unitGasres);
-		 InfoHelper(user, _nameAHum, 		ValuesPtr->absHumidity, 		settings.decimals.absHumidity, 		_unitAHum);
-		 InfoHelper(user, _nameDrewP, 		ValuesPtr->drewPoint, 			settings.decimals.drewPoint, 		tempScale.c_str());
+		 InfoHelper(user, _namePress, 			ValuesPtr->pressure, 			settings.decimals.pressure, 		_unitPress);
+		 InfoHelper(user, _nameGasRes,			ValuesPtr->gasResistance, 		settings.decimals.gasResistance,	_unitGasres);
+		 InfoHelper(user, _nameAHum, 			ValuesPtr->absHumidity, 		settings.decimals.absHumidity, 		_unitAHum);
+		 InfoHelper(user, _nameDrewP, 			ValuesPtr->drewPoint, 			settings.decimals.drewPoint, 		tempScale.c_str());
 		 InfoHelper(user, _nameIaq, 			ValuesPtr->iaq, 				settings.decimals.iaq, 				_unitIaq);
 		 InfoHelper(user, _nameIaqVerb, 		cvalues.iaqVerbal, 				settings.PublishIAQVerbal);
-		 InfoHelper(user, _nameStaticIaq,	ValuesPtr->staticIaq, 			settings.decimals.staticIaq, 		_unitStaticIaq);
-		 InfoHelper(user, _nameStaticIaqVerb,cvalues.staticIaqVerbal, 		settings.PublishStaticIAQVerbal);
+		 InfoHelper(user, _nameStaticIaq,		ValuesPtr->staticIaq, 			settings.decimals.staticIaq, 		_unitStaticIaq);
+		 InfoHelper(user, _nameStaticIaqVerb,	cvalues.staticIaqVerbal, 		settings.PublishStaticIAQVerbal);
 		 InfoHelper(user, _nameCo2, 			ValuesPtr->co2, 				settings.decimals.co2, 				_unitCo2);
 		 InfoHelper(user, _nameVoc, 			ValuesPtr->Voc, 				settings.decimals.Voc, 				_unitVoc);
-		 InfoHelper(user, _nameGasPer, 		ValuesPtr->gasPerc, 			settings.decimals.gasPerc, 			_unitGasPer);
+		 InfoHelper(user, _nameGasPer, 			ValuesPtr->gasPerc, 			settings.decimals.gasPerc, 			_unitGasPer);
  
 		 if (settings.pubAcc) {
-			 if (settings.decimals.iaq >= 0) 		InfoHelper(user, _nameIaqAc, 		ValuesPtr->iaqAccuracy, 		0, " ");
-			 if (settings.decimals.staticIaq >= 0) 	InfoHelper(user, _nameStaticIaqAc, 	ValuesPtr->staticIaqAccuracy, 	0, " ");
+			 if (settings.decimals.iaq >= 0) 			InfoHelper(user, _nameIaqAc, 		ValuesPtr->iaqAccuracy, 		0, " ");
+			 if (settings.decimals.staticIaq >= 0) 		InfoHelper(user, _nameStaticIaqAc, 	ValuesPtr->staticIaqAccuracy, 	0, " ");
 			 if (settings.decimals.co2 >= 0)			InfoHelper(user, _nameCo2Ac, 		ValuesPtr->co2Accuracy, 		0, " ");
 			 if (settings.decimals.Voc >= 0)			InfoHelper(user, _nameVocAc, 		ValuesPtr->VocAccuracy, 		0, " ");
 			 if (settings.decimals.gasPerc >= 0)		InfoHelper(user, _nameGasPerAc, 	ValuesPtr->gasPercAccuracy, 	0, " ");
@@ -715,28 +687,29 @@
   * @see UsermodManager::addToConfig()
   */
  void UsermodBME68X::addToConfig(JsonObject& root) {
-	 DEBUG_PRINT(F(UMOD_DEBUG_NAME "Creating configuration pages content: "));
+	 DEBUG_PRINT(F(GG_UMOD_DEBUG_NAME "Creating configuration pages content: "));
  
-	 JsonObject top = root.createNestedObject(FPSTR(UMOD_NAME));
+	 JsonObject top = root.createNestedObject(FPSTR(GG_UMOD_NAME));
 	 /* general settings */
-	 top[FPSTR(_enabled)] = 						settings.enabled;
+	 top[FPSTR(_enabled)] = 					settings.enabled;
 	 top[FPSTR(_nameI2CAdr)] = 					settings.I2cadress;
 	 top[FPSTR(_nameInterval)] = 				settings.Interval;
+	 top[FPSTR(_nameMaxAge)] = 					settings.MaxAge;
+	 top[FPSTR(_namePubAfterCalib)] = 			settings.publishAfterCalibration;
 	 top[FPSTR(_namePublishChange)] =		 	settings.PublischChange;
 	 top[FPSTR(_namePubAc)] = 					settings.pubAcc;
-	 top[FPSTR(_namePubSenState)] = 				settings.publishSensorState;
+	 top[FPSTR(_namePubSenState)] = 			settings.publishSensorState;
 	 top[FPSTR(_nameTempScale)] = 				settings.tempScale;
 	 top[FPSTR(_nameTempOffset)] = 				settings.tempOffset;
 	 top[FPSTR(_nameHADisc)] = 					settings.HomeAssistantDiscovery;
 	 top[FPSTR(_namePauseOnActWL)] = 			settings.pauseOnActiveWled;
-	 top[FPSTR(_nameDelCalib)] = 				flags.DeleteCaibration;
  
 	 /* Digs */
 	 JsonObject sensors_json = top.createNestedObject("Sensors");
 	 sensors_json[FPSTR(_nameTemp)] = 			settings.decimals.temperature;
 	 sensors_json[FPSTR(_nameHum)] = 			settings.decimals.humidity;
 	 sensors_json[FPSTR(_namePress)] = 			settings.decimals.pressure;
-	 sensors_json[FPSTR(_nameGasRes)] = 			settings.decimals.gasResistance;
+	 sensors_json[FPSTR(_nameGasRes)] = 		settings.decimals.gasResistance;
 	 sensors_json[FPSTR(_nameAHum)] = 			settings.decimals.absHumidity;
 	 sensors_json[FPSTR(_nameDrewP)] = 			settings.decimals.drewPoint;
 	 sensors_json[FPSTR(_nameIaq)] = 			settings.decimals.iaq;
@@ -747,9 +720,9 @@
 	 sensors_json[FPSTR(_nameVoc)] = 			settings.decimals.Voc;
 	 sensors_json[FPSTR(_nameGasPer)] =			settings.decimals.gasPerc;
  
-	 DEBUG_PRINTLN(F(GOGAB_OK));
+	 DEBUG_PRINTLN(F(GG_GOGAB_OK));
  }
- 
+
  /**
   * @brief Called by WLED: Add dropdown and additional infos / structure
   * @see Usermod::appendConfigData()
@@ -764,7 +737,7 @@
  
 	 /* Dropdown for Celsius/Fahrenheit*/
 	 oappend(F("dd=addDropdown('"));
-	 oappend(UMOD_NAME);
+	 oappend(GG_UMOD_NAME);
 	 oappend(F("','"));
 	 oappend(_nameTempScale);
 	 oappend(F("');"));
@@ -773,8 +746,8 @@
  
 	 /* i²C Address*/
 	 oappend(F("dd=addDropdown('"));
-	 oappend(UMOD_NAME);
-	 oappend(F("','"));
+	 oappend(GG_UMOD_NAME);
+	 oappend(F("','")); 
 	 oappend(_nameI2CAdr);
 	 oappend(F("');"));
 	 oappend(F("addOption(dd,'0x76',0x76);"));
@@ -795,41 +768,42 @@
   * @see UsermodManager::readFromConfig()
   */
  bool UsermodBME68X::readFromConfig(JsonObject& root) {
-	 DEBUG_PRINT(F(UMOD_DEBUG_NAME "Reading configuration: "));
+	 DEBUG_PRINT(F(GG_UMOD_DEBUG_NAME "Reading configuration: "));
  
-	 JsonObject top = root[FPSTR(UMOD_NAME)];
+	 JsonObject top = root[FPSTR(GG_UMOD_NAME)];
 	 bool configComplete = !top.isNull();
  
-	 /* general settings */ 																							/* DEFAULTS */
-	 configComplete &= getJsonValue(top[FPSTR(_enabled)], 						settings.enabled, 							1		);		// Usermod enabled per default
-	 configComplete &= getJsonValue(top[FPSTR(_nameI2CAdr)], 					settings.I2cadress, 						0x77	);		// Defalut IC2 adress set to 0x77 (some modules are set to 0x76)
-	 configComplete &= getJsonValue(top[FPSTR(_nameInterval)], 					settings.Interval, 							1		);		// Executed every second
-	 configComplete &= getJsonValue(top[FPSTR(_namePublishChange)], 				settings.PublischChange, 					false	);		// Publish changed values only
-	 configComplete &= getJsonValue(top[FPSTR(_nameTempScale)], 					settings.tempScale, 						0		);		// Temp sale set to Celsius (1=Fahrenheit)
-	 configComplete &= getJsonValue(top[FPSTR(_nameTempOffset)], 				settings.tempOffset, 						0		);		// Temp offset is set to 0 (Celsius)
-	 configComplete &= getJsonValue(top[FPSTR(_namePubSenState)], 				settings.publishSensorState, 				1		);		// Publish the sensor states
-	 configComplete &= getJsonValue(top[FPSTR(_namePubAc)], 						settings.pubAcc, 							1		);		// Publish accuracy values 
-	 configComplete &= getJsonValue(top[FPSTR(_nameHADisc)], 					settings.HomeAssistantDiscovery, 			true	);		// Activate HomeAssistant Discovery (this Module will be shown as MQTT device in HA)
-	 configComplete &= getJsonValue(top[FPSTR(_namePauseOnActWL)],				settings.pauseOnActiveWled,					false	);		// Pause on active WLED not activated per default
-	 configComplete &= getJsonValue(top[FPSTR(_nameDelCalib)], 					flags.DeleteCaibration, 					false	);		// IF checked the calibration file will be delete when the save button is pressed
+	/* general settings */ 																							/* DEFAULTS */
+	 configComplete &= getJsonValue(top[FPSTR(_enabled)], 						settings.enabled, 							GG_ENABLED						);
+	 configComplete &= getJsonValue(top[FPSTR(_nameI2CAdr)], 					settings.I2cadress, 						GG_I2CADRESS					);
+	 configComplete &= getJsonValue(top[FPSTR(_nameInterval)], 					settings.Interval, 							GG_INTERVAL						);
+	 configComplete &= getJsonValue(top[FPSTR(_nameMaxAge)], 					settings.MaxAge, 							GG_MAXAGE						);
+	 configComplete &= getJsonValue(top[FPSTR(_namePubAfterCalib)], 			settings.publishAfterCalibration, 			GG_PUBLISHAFTERCALIB			);
+	 configComplete &= getJsonValue(top[FPSTR(_namePublishChange)], 			settings.PublischChange, 					GG_PUBLISCHCHANGE				);
+	 configComplete &= getJsonValue(top[FPSTR(_nameTempScale)], 				settings.tempScale, 						GG_TEMPSCALE					);
+	 configComplete &= getJsonValue(top[FPSTR(_nameTempOffset)], 				settings.tempOffset, 						GG_TEMPOFFSET					);
+	 configComplete &= getJsonValue(top[FPSTR(_namePubSenState)], 				settings.publishSensorState, 				GG_PUBLISHSENSORSTATE			);
+	 configComplete &= getJsonValue(top[FPSTR(_namePubAc)], 					settings.pubAcc, 							GG_PUBACC						);
+	 configComplete &= getJsonValue(top[FPSTR(_nameHADisc)], 					settings.HomeAssistantDiscovery, 			GG_HOMEASSISTANTDISCOVERY		);
+	 configComplete &= getJsonValue(top[FPSTR(_namePauseOnActWL)],				settings.pauseOnActiveWled,					GG_PAUSEONACTIVEWLED			);
+
+	/* Decimal places */																							/* no of digs / -1 means deactivated */
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameTemp)], 			settings.decimals.temperature, 				GG_DECIMALS_TEMPERATURE			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameHum)], 			settings.decimals.humidity, 				GG_DECIMALS_HUMIDITY			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_namePress)], 			settings.decimals.pressure, 				GG_DECIMALS_PRESSURE			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameGasRes)], 		settings.decimals.gasResistance,			GG_DECIMALS_GASRESISTANCE		);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameDrewP)], 			settings.decimals.drewPoint, 				GG_DECIMALS_DREWPOINT			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameAHum)], 			settings.decimals.absHumidity, 				GG_DECIMALS_ABSHUMIDITY			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameIaq)], 			settings.decimals.iaq, 						GG_DECIMALS_IAQ					);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameIaqVerb)], 		settings.PublishIAQVerbal, 					GG_PUBLISHIAQVERBAL				);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameStaticIaq)], 		settings.decimals.staticIaq, 				GG_DECIMALS_STATICIAQ			);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameStaticIaqVerb)], 	settings.PublishStaticIAQVerbal,			GG_PUBLISHSTATICIAQVERBAL		);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameCo2)], 			settings.decimals.co2, 						GG_DECIMALS_CO2					);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameVoc)], 			settings.decimals.Voc, 						GG_DECIMALS_VOC					);
+	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameGasPer)], 		settings.decimals.gasPerc, 					GG_DECIMALS_GASPERC				);
  
-	 /* Decimal places */																							/* no of digs / -1 means deactivated */
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameTemp)], 			settings.decimals.temperature, 				1		);		// One decimal places
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameHum)], 			settings.decimals.humidity, 				1		);
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_namePress)], 			settings.decimals.pressure, 				0		);		// Zero decimal places
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameGasRes)], 			settings.decimals.gasResistance,			-1		);		// deavtivated
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameDrewP)], 			settings.decimals.drewPoint, 				1		);
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameAHum)], 			settings.decimals.absHumidity, 				1		);
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameIaq)], 			settings.decimals.iaq, 						0		);		// Index for Air Quality Number is active
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameIaqVerb)], 		settings.PublishIAQVerbal, 					-1		); 		// deactivated - Index for Air Quality (IAQ) verbal classification
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameStaticIaq)], 		settings.decimals.staticIaq, 				0		);		// activated - Static IAQ is better than IAQ for devices that are not moved
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameStaticIaqVerb)], 	settings.PublishStaticIAQVerbal,			0		);		// activated
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameCo2)], 			settings.decimals.co2, 						0		);
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameVoc)], 			settings.decimals.Voc, 						0		);
-	 configComplete &= getJsonValue(top["Sensors"][FPSTR(_nameGasPer)], 			settings.decimals.gasPerc, 					0		);
- 
-	 DEBUG_PRINTLN(F(GOGAB_OK));	
- 
+	 DEBUG_PRINTLN(F(GG_GOGAB_OK));	
+
 	 /* Set the selected temperature unit */
 	 if (settings.tempScale) {
 		 tempScale = F(_unitFahrenheit);
@@ -839,13 +813,13 @@
 	 }
  
 	 if (flags.DeleteCaibration) {
-		 DEBUG_PRINT(F(UMOD_DEBUG_NAME "Deleting Calibration File"));
+		 DEBUG_PRINT(F(GG_UMOD_DEBUG_NAME "Deleting Calibration File"));
 		 flags.DeleteCaibration = false;
-		 if (WLED_FS.remove(CALIB_FILE_NAME)) {
-			 DEBUG_PRINTLN(F(GOGAB_OK));
+		 if (WLED_FS.remove(GG_CALIB_FILE_NAME)) {
+			 DEBUG_PRINTLN(F(GG_GOGAB_OK));
 		 }
 		 else {
-			 DEBUG_PRINTLN(F(GOGAB_FAIL));
+			 DEBUG_PRINTLN(F(GG_GOGAB_FAIL));
 		 }
 	 }
  
@@ -1019,35 +993,35 @@
  
 	 if (iaqSensor.bsecStatus != BSEC_OK) {
 		 InfoPageStatusLine = "BSEC Library ";
-		 DEBUG_PRINT(UMOD_DEBUG_NAME + InfoPageStatusLine);
+		 DEBUG_PRINT(GG_UMOD_DEBUG_NAME + InfoPageStatusLine);
 		 flags.InitSuccessful = false;
 		 if (iaqSensor.bsecStatus < BSEC_OK) {
 			 InfoPageStatusLine += " Error Code : " + String(iaqSensor.bsecStatus);
-			 DEBUG_PRINTLN(GOGAB_FAIL);
+			 DEBUG_PRINTLN(GG_GOGAB_FAIL);
 		 }
 		 else {
 			 InfoPageStatusLine += " Warning Code : " + String(iaqSensor.bsecStatus);
-			 DEBUG_PRINTLN(GOGAB_WARN);
+			 DEBUG_PRINTLN(GG_GOGAB_WARN);
 		 }
 	 }
 	 else {
 		 InfoPageStatusLine = "Sensor BME68X ";
-		 DEBUG_PRINT(UMOD_DEBUG_NAME + InfoPageStatusLine);
+		 DEBUG_PRINT(GG_UMOD_DEBUG_NAME + InfoPageStatusLine);
  
 		 if (iaqSensor.bme68xStatus != BME68X_OK) {
 			 flags.InitSuccessful = false;
 			 if (iaqSensor.bme68xStatus < BME68X_OK) {
 				 InfoPageStatusLine += "error code: " + String(iaqSensor.bme68xStatus);
-				 DEBUG_PRINTLN(GOGAB_FAIL);
+				 DEBUG_PRINTLN(GG_GOGAB_FAIL);
 			 }
 			 else {
 				 InfoPageStatusLine += "warning code: " + String(iaqSensor.bme68xStatus);
-				 DEBUG_PRINTLN(GOGAB_WARN);
+				 DEBUG_PRINTLN(GG_GOGAB_WARN);
 			 }
 		 }
 		 else {
 			 InfoPageStatusLine += F("OK");
-			 DEBUG_PRINTLN(GOGAB_OK);
+			 DEBUG_PRINTLN(GG_GOGAB_OK);
 		 }
 	 }
  }
@@ -1056,21 +1030,21 @@
   * @brief Loads the calibration data from the file system of the device
   */
  void UsermodBME68X::loadState() {
-	 if (WLED_FS.exists(CALIB_FILE_NAME)) {
-		 DEBUG_PRINT(F(UMOD_DEBUG_NAME "Read the calibration file: "));
-		 File file = WLED_FS.open(CALIB_FILE_NAME, FILE_READ);
+	 if (WLED_FS.exists(GG_CALIB_FILE_NAME)) {
+		 DEBUG_PRINT(F(GG_UMOD_DEBUG_NAME "Read the calibration file: "));
+		 File file = WLED_FS.open(GG_CALIB_FILE_NAME, FILE_READ);
 		 if (!file) {
-			 DEBUG_PRINTLN(GOGAB_FAIL);
+			 DEBUG_PRINTLN(GG_GOGAB_FAIL);
 		 }
 		 else {
 			 file.read(bsecState, BSEC_MAX_STATE_BLOB_SIZE);
 			 file.close();
-			 DEBUG_PRINTLN(GOGAB_OK);
+			 DEBUG_PRINTLN(GG_GOGAB_OK);
 			 iaqSensor.setState(bsecState);
 		 }
 	 }
 	 else {
-		 DEBUG_PRINTLN(F(UMOD_DEBUG_NAME "Calibration file not found."));
+		 DEBUG_PRINTLN(F(GG_UMOD_DEBUG_NAME "Calibration file not found."));
 	 }
  }
  
@@ -1078,17 +1052,17 @@
   * @brief Saves the calibration data from the file system of the device
   */
  void UsermodBME68X::saveState() {
-	 DEBUG_PRINT(F(UMOD_DEBUG_NAME "Write the calibration file  "));
-	 File file = WLED_FS.open(CALIB_FILE_NAME, FILE_WRITE);
+	 DEBUG_PRINT(F(GG_UMOD_DEBUG_NAME "Write the calibration file  "));
+	 File file = WLED_FS.open(GG_CALIB_FILE_NAME, FILE_WRITE);
 	 if (!file) {
-		 DEBUG_PRINTLN(GOGAB_FAIL);
+		 DEBUG_PRINTLN(GG_GOGAB_FAIL);
 	 }
 	 else {
 		 iaqSensor.getState(bsecState);
 		 file.write(bsecState, BSEC_MAX_STATE_BLOB_SIZE);
 		 file.close();
 		 stateUpdateCounter++;
-		 DEBUG_PRINTF("(saved %d times)" GOGAB_OK "\n", stateUpdateCounter);
+		 DEBUG_PRINTF("(saved %d times)" GG_GOGAB_OK "\n", stateUpdateCounter);
 		 flags.SaveState = false; // Clear save state flag
  
 		 char contbuffer[30];
@@ -1099,12 +1073,12 @@
 		 time(&curr_time);
 		 curr_tm = localtime(&curr_time);
  
-		 snprintf_P(charbuffer, 127, PSTR("%s/%s"), mqttDeviceTopic, UMOD_NAME "/Calib Last Run");
+		 snprintf_P(charbuffer, 127, PSTR("%s/%s"), mqttDeviceTopic, GG_UMOD_NAME "/Calib Last Run");
 		 strftime(contbuffer, 30, "%d %B %Y - %T", curr_tm);
 		 if (WLED_MQTT_CONNECTED) mqtt->publish(charbuffer, 0, false, contbuffer);
  
 		 snprintf(contbuffer, 30, "%d", stateUpdateCounter);
-		 snprintf_P(charbuffer, 127, PSTR("%s/%s"), mqttDeviceTopic, UMOD_NAME "/Calib Count");
+		 snprintf_P(charbuffer, 127, PSTR("%s/%s"), mqttDeviceTopic, GG_UMOD_NAME "/Calib Count");
 		 if (WLED_MQTT_CONNECTED) mqtt->publish(charbuffer, 0, false, contbuffer);
 	 }
  }

@@ -1,3 +1,14 @@
+/*
+Bufixes by GeoGab:
+- Zeile 20: Die Unit der HAIntegration hatte ein nicht erlaubtes Leerzeichen
+- Zeile 38: der Devicename wurde angepasst. 
+- Zeile 39: Der Eintrag state_class=measurement fehlte in der HAIntegration.
+- Zeile 51: Device Identifier sollte nicht mehr als der Devicename sein
+- Zeile 30: Die Unit der Info Seite hatte ein nicht erlaubtes Leerzeichen
+- Zeile 106: Die Unit der Info Seite hatte ein nicht erlaubtes Leerzeichen
+- Zeile 137: Die Unit der Info Seite hatte ein nicht erlaubtes Leerzeichen
+*/
+
 // force the compiler to show a warning to confirm that this file is included
 #warning **** Included USERMOD_BH1750 ****
 
@@ -17,7 +28,7 @@ void Usermod_BH1750::_mqttInitialize()
 {
   mqttLuminanceTopic = String(mqttDeviceTopic) + F("/brightness");
 
-  if (HomeAssistantDiscovery) _createMqttSensor(F("Brightness"), mqttLuminanceTopic, F("Illuminance"), F(" lx"));
+    if (HomeAssistantDiscovery) _createMqttSensor(F("Brightness"), mqttLuminanceTopic, F("Illuminance"), F("lx"));    // GeoGab: Fixing space issue
 }
 
 // Create an MQTT Sensor for Home Assistant Discovery purposes, this includes a pointer to the topic that is published to in the Loop.
@@ -27,7 +38,8 @@ void Usermod_BH1750::_createMqttSensor(const String &name, const String &topic, 
   
   StaticJsonDocument<600> doc;
   
-  doc[F("name")] = String(serverDescription) + " " + name;
+  doc[F("name")] = name;                                      // BUGFIX by GeoGab. Device Name sollte nicht mit im Namen des Devices sein
+  doc[F("state_class")] = "measurement";                      // BUGFIX by GeoGab. Was missing for statistics
   doc[F("state_topic")] = topic;
   doc[F("unique_id")] = String(mqttClientID) + name;
   if (unitOfMeasurement != "")
@@ -38,7 +50,7 @@ void Usermod_BH1750::_createMqttSensor(const String &name, const String &topic, 
 
   JsonObject device = doc.createNestedObject(F("device")); // attach the sensor to the same device
   device[F("name")] = serverDescription;
-  device[F("identifiers")] = "wled-sensor-" + String(mqttClientID);
+  device[F("identifiers")] = "" + String(mqttClientID);       // BUGFIX by GeoGab: Device Identifier sollte nicht mehr als der Devicename sein
   device[F("manufacturer")] = F(WLED_BRAND);
   device[F("model")] = F(WLED_PRODUCT_NAME);
   device[F("sw_version")] = versionString;
@@ -92,7 +104,7 @@ void Usermod_BH1750::loop()
           mqttInitialized = true;
         }
       mqtt->publish(mqttLuminanceTopic.c_str(), 0, true, String(lux).c_str());
-      DEBUG_PRINTLN(F("Brightness: ") + String(lux) + F("lx"));
+      DEBUG_PRINTLN(F("Brightness: ") + String(lux) + F("lx"));  // GeoGab: Fixing space issue
     }
     else
     {
@@ -123,7 +135,7 @@ void Usermod_BH1750::addToJsonInfo(JsonObject &root)
       return;
   } else {
     lux_json.add(lastLux);
-    lux_json.add(F(" lx"));
+    lux_json.add(F("lx"));   // GeoGab: Fixing space issue
   }
 }
 
