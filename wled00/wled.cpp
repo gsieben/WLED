@@ -865,6 +865,16 @@ void WLED::handleConnection()
   #endif
   const bool wifiConfigured = WLED_WIFI_CONFIGURED;
 
+  #ifdef ARDUINO_ARCH_ESP32
+    // Use cmDNS (this is the buffer that holds your name)
+  if (cmDNS && cmDNS[0] != '\0') {
+    WiFi.setHostname(cmDNS);
+  } else {
+    // Fallback to DEVICE_NAME if cmDNS is still empty
+    WiFi.setHostname(WLED_HOST_NAME);
+  }
+  #endif
+
   // ignore connection handling if WiFi is configured and scan still running
   // or within first 2s if WiFi is not configured or AP is always active
   if ((wifiConfigured && multiWiFi.size() > 1 && WiFi.scanComplete() < 0) || (now < 2000 && (!wifiConfigured || apBehavior == AP_BEHAVIOR_ALWAYS)))
