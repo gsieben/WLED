@@ -463,7 +463,7 @@
  
 	 /* Integer Values */
 	 ValuesPtr->iaqAccuracy = 		iaqSensor.iaqAccuracy; 	
-	 ValuesPtr->staticIaqAccuracy = 	iaqSensor.staticIaqAccuracy;
+	 ValuesPtr->staticIaqAccuracy = iaqSensor.staticIaqAccuracy;
 	 ValuesPtr->co2Accuracy = 		iaqSensor.co2Accuracy;
 	 ValuesPtr->VocAccuracy = 		iaqSensor.breathVocAccuracy;
 	 ValuesPtr->gasPercAccuracy = 	iaqSensor.gasPercentageAccuracy;
@@ -528,7 +528,7 @@
 	 MQTT_PublishHASensor(_nameStaticIaqAc,	"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.staticIaq * settings.pubAcc, 	1);
 	 MQTT_PublishHASensor(_nameCo2Ac,		"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.co2 * settings.pubAcc, 			1);
 	 MQTT_PublishHASensor(_nameVocAc,		"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.Voc * settings.pubAcc, 			1);
-	 MQTT_PublishHASensor(_nameGasPerAc,	"", 					_unitNone, 			settings.pubAcc - 1 + settings.decimals.gasPerc * settings.pubAcc, 		1);
+	 MQTT_PublishHASensor(_nameGasPerAc,	"", 						_unitNone, 			settings.pubAcc - 1 + settings.decimals.gasPerc * settings.pubAcc, 		1);
 	 
 	 MQTT_PublishHASensor(_nameStabStatus,	"", 						_unitNone, 			settings.publishSensorState - 1, 1);
 	 MQTT_PublishHASensor(_nameRunInStatus,	"", 						_unitNone, 			settings.publishSensorState - 1, 1);

@@ -866,7 +866,7 @@ void WLED::handleConnection()
   const bool wifiConfigured = WLED_WIFI_CONFIGURED;
 
   #ifdef ARDUINO_ARCH_ESP32
-    // Use cmDNS (this is the buffer that holds your name)
+    // Use cmDNS (this is the buffer that holds your name) GeoGab Bug Fix
   if (cmDNS && cmDNS[0] != '\0') {
     WiFi.setHostname(cmDNS);
   } else {

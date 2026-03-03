@@ -1,0 +1,18 @@
+# ESP32 Partition Table (16MB Flash)
+# Name,     Type, SubType, Offset,   Size,     Flags
+
+# System & Konfiguration
+nvs,        data, nvs,     0x9000,   20K,
+otadata,    data, ota,     0xe000,   8K,
+
+# App-Slots (OTA fähig)
+# Haupt-Firmware
+app0,       app,  ota_0,   0x10000,  2880K,
+# OTA-Update Slot
+app1,       app,  ota_1,   ,         2880K,
+
+# Speicher & Debug
+# Dateisystem (Web/Data)
+spiffs,     data, spiffs,  ,         10432K,
+# Fehler-Log
+coredump,   data, coredump,,         64K,

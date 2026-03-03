@@ -1,0 +1,15 @@
+2026/03/02 12:28:24.708 => CloseSerial: mSerialFile=0xffffffff
+2026/03/02 12:28:24.708 => Prepare Open Serial: Com=\\.\COM8 BaudRate=115200
+2026/03/02 12:28:24.709 => OpenSerial: Com=\\.\COM8 BaudRate=115200, Success=1, mSerialFile=0x000005f0
+2026/03/02 12:28:26.712 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/03/02 12:28:28.871 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/03/02 12:28:30.873 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/03/02 12:28:32.875 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/03/02 12:28:34.876 => CRadarProtocolDevice::OpenCmdMode: CMDID(0x00FF) failed with:A001
+2026/03/02 12:28:34.876 => Cancel Read Data
+2026/03/02 12:28:34.876 => CloseSerial: mSerialFile=0x000005f0
+2026/03/02 12:29:49.450 => Stop Realtime data show.
+2026/03/02 12:29:49.451 => Stop Noise scan.
+2026/03/02 12:29:49.451 => Cancel Read Data
+2026/03/02 12:29:49.451 => CloseSerial: mSerialFile=0xffffffff
+2026/03/02 12:29:49.451 => CloseSerial: mSerialFile=0xffffffff
