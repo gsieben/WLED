@@ -1,0 +1,8 @@
+{
+  "name": "LD2410_full",
+  "build": { "libArchive": false },
+  "dependencies": {
+    "ld2420":"https://github.com/bolukan/LD2420"
+  }
+}
+

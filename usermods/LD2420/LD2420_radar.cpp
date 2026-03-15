@@ -1,28 +1,17 @@
 /**
  * @file usermod_GeoGab.cpp
  * @author Gabriel A. Sieben (GeoGab)
- * @brief WLED Usermod implementing the Hi-Link LD2410 mmWave radar sensor
+ * @brief WLED Usermod implementing the Hi-Link LD2420 mmWave radar sensor
  * @version 1.0.0
  * @date 25 Feb 2026
  */
- /* 
-╔══════════╦═══════════╦═══════════╦══════════════╦════════════╦════════════════════════════════════════════╗
-║ Model    ║ Supported ║ Bluetooth ║ Light Sensor ║ Gate Count ║ Special Features                           ║
-╠══════════╬═══════════╬═══════════╬══════════════╬════════════╬════════════════════════════════════════════╣
-║ LD2410   ║ ✔         ║ ❌       ║ ❌           ║ 9          ║ Standard model, no BLE                     ║
-║ LD2410B  ║ ✔         ║ ✔        ║ ❌           ║ 9          ║ LD2410 with Bluetooth                      ║
-║ LD2410C  ║ ✔         ║ ✔        ║ ✔            ║ 9          ║ Bluetooth + integrated light sensor        ║
-║ LD2420   ║ ✔         ║ ❌       ║❌            ║ 15         ║ Higher resolution, more sensitive          ║
-║ LD2450   ║ ❌        ║ ✔        ║ ❌           ║ 24 (3D)    ║ 3D radar, multi‑target tracking, BLE       ║
-╚══════════╩═══════════╩═══════════╩══════════════╩════════════╩════════════════════════════════════════════╝
-*/
  /* 
   TODOs: 
     - Auto Threshholds auch über save config aktivieren. 
     - AUXILIARY CONTROL einbauen
     - Bluetooth einbauen (GUI: password setzen... ) und info screen
     - Nach serial speed suchen (gui)
-    - evl. anderen Serialkanal verwenden (gui) wenn man das MyLD2410 radar(Serial1); flexiebel machen kann
+    - evl. anderen Serialkanal verwenden (gui) wenn man das MyLD2420 radar(Serial1); flexiebel machen kann
     - Serielle geschwindigkeit ändern (gui) 
     - ins info   String getMACstr();
     - ins info  String getFirmware();
@@ -30,38 +19,45 @@
 */
 
 #include "wled.h"
-#include "LD2410_full.h"
-#include <MyLD2410.h>
+#include "LD2420_radar.h"
+#include <ld2420.h>
 
-class UsermodLD24xxGeoGab: public Usermod {
+class UmLD2420GeoGab: public Usermod {
 	public:
     /* Public: WLED Functions */
     void setup();								                      // * Setup of the user module called by wled main
     void loop();								                      // * Loop of the user module called by wled main in loop
-    void addToConfig(JsonObject& root);               // * Add config entries to WLED config
+
+    /* Public: WLED Basic Functions */
+    uint16_t getId();                                 // * Get unique usermod ID
     bool readFromConfig(JsonObject& root);            // * Read config from JSON
+    void addToConfig(JsonObject& root);               // * Add config entries to WLED config
     void appendConfigData();                          // * Add config descriptions
     void addToJsonInfo(JsonObject& root);             // * Add info to WLED info page
-    void readFromJsonState(JsonObject& root);         // * Reads button clicks 
     void addToJsonState(JsonObject& root);            // * Add State page
+    void readFromJsonState(JsonObject& root);         // * React to the button click in the info screen.
+
+    /* Public: WLED Special Functions*/
+    void onWiFiConnect();   		                      // * Handel WIFI Connect things
+    void onWiFiDisconnect();		                      // * dio 
+    void onMqttConnect(bool sessionPresent) override; // * Erst beim Connect den MQTT Nutzen
+    void onMqttDisconnect(int8_t reason);             // * Disconnect registirieren
 
     /* Public: WLED Webserver Functions */
     void handleWebRequest(AsyncWebServerRequest *request);    // Schickt die HTML Seite die auf das flash gespeichert ist
     void handleJsonGet(AsyncWebServerRequest *request);       // Schickt Daten zur Calibration GUI
     void handleJsonPost(AsyncWebServerRequest *request, JsonVariant json);  // Erhält Daten von der Calibraton GUI
-    uint16_t getId();                                 // * Get unique usermod ID
+
 
   private:
   	/* Private: Functions */
-    void initLD24xx();                                // * Initialize sensor
+    void FlagProcessor();                             // * Subroutinen die auf Bedarf über die pflags aufgerufen werden
+    void initLD2420();                                // * Initialize sensor
     void checkLightControl();                         // * TODO: noch in write and read sensor config aufnehmen
     void readSensorData();                            // * Read sensor values
     void startEnhancedMode();                         // * Activates the calibration mode
     void stopEnhancedMode();                          // * De-activates the calibration mode
-    void FlagProcessor();                             // * Subroutinen die auf Bedarf über die pflags aufgerufen werden
     void calculateAutoThresholds();                   // * Berechnet die Thresholds automaitsch
-    void onMqttConnect(bool sessionPresent) override; // * Erst beim Connect den MQTT Nutzen
-    void onMqttDisconnect(int8_t reason); // * Disconnect registirieren
     void haDiscovery();                               // * HomeAssistant Discovery mqtt push
     void haPublishState();                            // * Publich the sendor data.
     void error(const char* msg);                      // * Error Handling ran strings
@@ -70,7 +66,7 @@ class UsermodLD24xxGeoGab: public Usermod {
     int autoDetectBaudrate();                         // * Detects the Baudrate 
     String getMillisStamp();                          // * Timestamp for the log
 
-    /* Calibration Page Specials */
+    /* Private: Calibration Page Specials */
     void enterCalibrationMode();                      // * Enter the calibration mode
     void exitCalibrationMode();                       // * Exit he calibration mode
     void autoThresholds();                            // * Find auto thresholds
@@ -81,15 +77,16 @@ class UsermodLD24xxGeoGab: public Usermod {
 
     /*** V A R I A B L E s  &  C O N S T A N T s ***/
     /* Private: Settings of Usermod BME68X wicht can be adapted in WLED usermods */
+
     struct settings_t {
-      bool enabled = LD2410_ENABLED;                              // * Whether this usermod is enabled
-		  uint8_t Interval = LD2410_INTERVAL; 	                      // * Interval of reading sensor data in seconds
-      uint BaudRate = LD2410_BAUDRATE;                            // * Baud Rate of the Device 
-      int8_t rxpin = LD2410_RXPIN;                                // * RX PIN > TX of LD2410
-      int8_t txpin = LD2410_TXPIN;                                // * TX PIN > RX of LD2410
-      bool HADiscovery = LD2410_HA_DISCOVERY;                     // * Publish Home Assistant Discovery messages
+      bool enabled = LD2420_ENABLED;                              // * Whether this usermod is enabled
+		  uint8_t Interval = LD2420_INTERVAL; 	                      // * Interval of reading sensor data in seconds
+      uint BaudRate = LD2420_BAUDRATE;                            // * Baud Rate of the Device 
+      int8_t rxpin = LD2420_RXPIN;                                // * RX PIN -> should be connected to TX of LD2420 sensor
+      int8_t txpin = LD2420_TXPIN;                                // * TX PIN > should be connected to RX of LD2420 sensor
+      bool HADiscovery = LD2420_HA_DISCOVERY;                     // * Publish Home Assistant Discovery messages
       /* Fixed settings (not in the GUI Setting page)             */
-      bool autoThresholdsTimeout = LD2410_AUTOTRESHOLDS_TIMEOUT;  // * Setting timeout for AutoTrasholds
+      bool autoThresholdsTimeout = LD2420_AUTOTRESHOLDS_TIMEOUT;  // * Setting timeout for AutoTrasholds
     } settings;
 
 	  /* Private: Status Flags */
@@ -120,7 +117,7 @@ class UsermodLD24xxGeoGab: public Usermod {
     /* Private: Internal Values and values of the Sensor */
     struct values_t {
       String firmware = "";               // TODO Firmware of the module
-      String sensorType = LD24XX_NAME;    // TODO Sensor type LD2410, LD2410... (LD2450 not supported message)
+      String sensorType = LD2420_NAME;    // TODO Sensor type LD2420, LD2420... (LD2450 not supported message)
       String version = "";                // TODO Software version -> update firmware message
       String BTmac = "";                  // Bluetooth MAC Adress
       int maxGates = 0;                   // Maximum existing gates
@@ -146,7 +143,7 @@ class UsermodLD24xxGeoGab: public Usermod {
 
     /* Private: Measurement timers */
     struct timer_t {
-      uint32_t ld24xx_startMillis = 0;    // Start time.
+      uint32_t LD2420_startMillis = 0;    // Start time.
       uint32_t actual;  									// Actual time stamp
       uint32_t lastRun; 									// Last measurement time stamp
     } timer;
@@ -166,42 +163,42 @@ class UsermodLD24xxGeoGab: public Usermod {
 /************************************************************************************************************/
 
 // Constructor
-MyLD2410 radar(SENSORSERIAL);
+LD2420 radar(SENSORSERIAL);
 
 /**
  * @brief Called once by WLED during startup
  *
- * Initializes the LD2410 radar sensor if the usermod is enabled.
+ * Initializes the LD2420 radar sensor if the usermod is enabled.
  * Any failure here prevents further processing in loop().
  */
-void UsermodLD24xxGeoGab::setup() {
-  timer.ld24xx_startMillis = millis();
+void UmLD2420GeoGab::setup() {
+  timer.LD2420_startMillis = millis();
 
-  #ifdef LD24XX_DEBUG
-    LD24XX_DBG.begin(115200);
-    LD24XX_DBG.println(LD24XX_DNAME "Debug mode" GG_GREEN " active" GG_RES);
+  #ifdef LD2420_DEBUG
+    LD2420_DBG.begin(115200);
+    LD2420_DBG.println(LD2420_DNAME "Debug mode" GG_GREEN " active" GG_RES);
   #endif
 
-  LD24XX_DPRINT("setup() started");
+  LD2420_DPRINT("setup() started");
 
   if (!settings.enabled) {
-    LD24XX_DPRINT("setup(): LD24xx usermod disabled by configuration.");
-    error(F("LD24xx usermod disabled by configuration."));
+    LD2420_DPRINT("setup(): LD2420 usermod disabled by configuration.");
+    error(F("LD2420 usermod disabled by configuration."));
     sflags.InitSuccessful = false;
     return;
   }
 
-  initLD24xx();           // Init Sensor
+  initLD2420();           // Init Sensor
   registerEndpoints();    // usermod Webside Calibration Page Endpoints
 
-  LD24XX_DPRINT("setup():" GG_OK);
+  LD2420_DPRINT("setup():" GG_OK);
 }
 
 /**
  * @brief Main loop called repeatedly by WLED
  *
  */
-void UsermodLD24xxGeoGab::loop()
+void UmLD2420GeoGab::loop()
 {
   // Abort early if usermod is inactive or WLED is updating LEDs
   if (!settings.enabled || strip.isUpdating() || !sflags.InitSuccessful) return;
@@ -213,7 +210,7 @@ void UsermodLD24xxGeoGab::loop()
     timer.lastRun = timer.actual;
   }
 
-  #ifdef LD24XX_DEBUG
+  #ifdef LD2420_DEBUG
     timer.actual = millis();
     if (timer.actual - timer.lastRun < 500) return;      // In debug mode just every 500 second to not spam the serial port
     timer.lastRun = timer.actual;
@@ -229,72 +226,72 @@ void UsermodLD24xxGeoGab::loop()
   FlagProcessor();
 }
 
-void UsermodLD24xxGeoGab::FlagProcessor()
+void UmLD2420GeoGab::FlagProcessor()
 {
   // --- Restart module ------------------------------------------------------
   if (pflags.RestartModule) {
     pflags.RestartModule = false;
-    LD24XX_DPRINT("FlagProcessor(): Sensor reboot requested by user");
+    LD2420_DPRINT("FlagProcessor(): Sensor reboot requested by user");
     radar.requestReboot();
   }
 
   // --- Factory reset -------------------------------------------------------
   if (pflags.FactoryReset) {
     pflags.FactoryReset = false;
-    LD24XX_DPRINT("FlagProcessor(): Sensor factory reset requested by user");
+    LD2420_DPRINT("FlagProcessor(): Sensor factory reset requested by user");
     radar.requestReset();
   }
 
   // --- Reinitialize sensor -------------------------------------------------
   if (pflags.ReInitialize) {
     pflags.ReInitialize = false;
-    LD24XX_DPRINT("FlagProcessor(): Reinitialisation of the sensor");
-    initLD24xx();
+    LD2420_DPRINT("FlagProcessor(): Reinitialisation of the sensor");
+    initLD2420();
   }
 
   // --- Auto thresholds -----------------------------------------------------
   if (pflags.AutoThresholds) {
     // pflags.AutoThresholds = false;     // Darf hier nicht gesetzt werden!
-    LD24XX_DPRINT("FlagProcessor(): Auto thresholds requested");
+    LD2420_DPRINT("FlagProcessor(): Auto thresholds requested");
     calculateAutoThresholds();
   }
 
   // --- Calibration Mode Start ---------------------------------------------
   if (pflags.StartCalibration) {
     pflags.StartCalibration = false;
-    LD24XX_DPRINT("FlagProcessor(): Entering calibration mode");
+    LD2420_DPRINT("FlagProcessor(): Entering calibration mode");
     enterCalibrationMode();
   }
 
   // --- Calibration Mode Stop ----------------------------------------------
   if (pflags.StopCalibration) {
     pflags.StopCalibration = false;
-    LD24XX_DPRINT("FlagProcessor(): Exiting calibration mode");
+    LD2420_DPRINT("FlagProcessor(): Exiting calibration mode");
     exitCalibrationMode();
   }
 
   if (pflags.LoadCalibration) {
     pflags.LoadCalibration = false;
-    LD24XX_DPRINT("FlagProcessor(): Load Calibration Settings");
+    LD2420_DPRINT("FlagProcessor(): Load Calibration Settings");
     loadCalibrationFromSensor();
 
   }
 }
 
-/*********************************************************************************************************/
+/******************************************************************************************************************************/
 /****************************************** WLED relatet routines ****************************************/
-/*********************************************************************************************************/
+/******************************************************************************************************************************/
 
 /**
 * @brief Called by WLED: Returns the unique usermod ID
 */
-uint16_t UsermodLD24xxGeoGab::getId() {
-  LD24XX_DPRINT("getId(): Was called.");
-  return USERMOD_ID_LD2410_FULL;
+uint16_t UmLD2420GeoGab::getId() {
+  LD2420_DPRINT("getId(): Was called.");
+  return USERMOD_ID_LD2420;
 }
 
 /**
- * @brief Load LD2410 usermod configuration from JSON.
+ * @brief Load LD2420 usermod configuration from JSON.
  *
  * Called:
  *  - At boot (WLED_FS_READY = false)
@@ -305,13 +302,13 @@ uint16_t UsermodLD24xxGeoGab::getId() {
  *  - Detect changes
  *  - Set process flags (NO actions here!)
  */
-bool UsermodLD24xxGeoGab::readFromConfig(JsonObject& root)
+bool UmLD2420GeoGab::readFromConfig(JsonObject& root)
 {
-  LD24XX_DPRINT("readFromConfig(): Reading LD2410 config");
+  LD2420_DPRINT("readFromConfig(): Reading LD2420 config");
 
-  JsonObject top = root["LD2410"];
+  JsonObject top = root["LD2420"];
   if (top.isNull()) {
-    LD24XX_DPRINT("readFromConfig(): No LD2410 section found");
+    LD2420_DPRINT("readFromConfig(): No LD2420 section found");
     return false;
   }
 
@@ -321,38 +318,38 @@ bool UsermodLD24xxGeoGab::readFromConfig(JsonObject& root)
   uint32_t oldBaud = settings.BaudRate;
 
   // Load values with fallback defaults
-  settings.enabled      = top["enabled"]      | LD2410_ENABLED;
-  settings.rxpin        = top["rxpin"]        | LD2410_RXPIN;
-  settings.txpin        = top["txpin"]        | LD2410_TXPIN;
-  settings.BaudRate     = top["baudrate"]     | LD2410_BAUDRATE;
-  settings.Interval     = top["interval"]     | LD2410_INTERVAL;
-  settings.HADiscovery  = top["ha_discovery"] | LD2410_HA_DISCOVERY;
+  settings.enabled      = top["enabled"]      | LD2420_ENABLED;
+  settings.rxpin        = top["rxpin"]        | LD2420_RXPIN;
+  settings.txpin        = top["txpin"]        | LD2420_TXPIN;
+  settings.BaudRate     = top["baudrate"]     | LD2420_BAUDRATE;
+  settings.Interval     = top["interval"]     | LD2420_INTERVAL;
+  settings.HADiscovery  = top["ha_discovery"] | LD2420_HA_DISCOVERY;
 
   // Detect UART changes (only when changed via Web-UI)
   if ((oldRx != settings.rxpin ||
        oldTx != settings.txpin ||
        oldBaud != settings.BaudRate))
   {
-    LD24XX_DPRINT("readFromConfig(): UART settings changed -> Reinitialize sensor");
+    LD2420_DPRINT("readFromConfig(): UART settings changed -> Reinitialize sensor");
     pflags.ReInitialize = true;
   }
 
-  LD24XX_DPRINT("readFromConfig():" GG_OK);
+  LD2420_DPRINT("readFromConfig():" GG_OK);
   return true;
 }
 
 /**
- * @brief Called by WLED: Add LD2410 usermod settings to cfg.json
+ * @brief Called by WLED: Add LD2420 usermod settings to cfg.json
  *
  * This function creates the configuration fields that appear
  * in the WLED Usermod settings page. Only persistent settings
  * belong here — NOT calibration data.
  */
-void UsermodLD24xxGeoGab::addToConfig(JsonObject& root)
+void UmLD2420GeoGab::addToConfig(JsonObject& root)
 {
-  LD24XX_DPRINT("addToConfig(): Adding LD2410 config entries");
+  LD2420_DPRINT("addToConfig(): Adding LD2420 config entries");
 
-  JsonObject top = root.createNestedObject("LD2410");
+  JsonObject top = root.createNestedObject("LD2420");
 
   top["enabled"]      = settings.enabled;
   top["rxpin"]        = settings.rxpin;
@@ -361,7 +358,7 @@ void UsermodLD24xxGeoGab::addToConfig(JsonObject& root)
   top["interval"]     = settings.Interval;
   top["ha_discovery"] = settings.HADiscovery;
 
-  LD24XX_DPRINT("addToConfig():" GG_OK);
+  LD2420_DPRINT("addToConfig():" GG_OK);
 }
 
 
@@ -371,38 +368,38 @@ void UsermodLD24xxGeoGab::addToConfig(JsonObject& root)
  * This function provides human‑readable labels and descriptions
  * for the config fields created in addToConfig().
  */
-void UsermodLD24xxGeoGab::appendConfigData()
+void UmLD2420GeoGab::appendConfigData()
 {
-  LD24XX_DPRINT("appendConfigData(): Appending LD2410 config UI");
+  LD2420_DPRINT("appendConfigData(): Appending LD2420 config UI");
 
-  oappend(F("dd=addDropdown('LD2410','enabled');"));
+  oappend(F("dd=addDropdown('LD2420','enabled');"));
   oappend(F("addOption(dd,'Disabled',0);"));
   oappend(F("addOption(dd,'Enabled',1);"));
-  oappend(F("addInfo('LD2410:RX Pin',1,'ESP32 UART RX Pin (LD24xx TX)');"));
-  oappend(F("addInfo('LD2410:TX Pin',1,'ESP32 UART TX Pin (LD24xx RX)');"));
-  oappend(F("dd=addDropdown('LD2410','Baudrate');"));
+  oappend(F("addInfo('LD2420:RX Pin',1,'ESP32 UART RX Pin (LD2420 TX)');"));
+  oappend(F("addInfo('LD2420:TX Pin',1,'ESP32 UART TX Pin (LD2420 RX)');"));
+  oappend(F("dd=addDropdown('LD2420','Baudrate');"));
   oappend(F("addOption(dd,'9600',9600);"));
   oappend(F("addOption(dd,'19200',19200);"));
   oappend(F("addOption(dd,'38400',38400);"));
   oappend(F("addOption(dd,'57600',57600);"));
   oappend(F("addOption(dd,'115200',115200);"));
   oappend(F("addOption(dd,'256000',256000);"));
-  oappend(F("addInfo('LD2410:Baudrate',1,'Serial baudrate (default 115200)');"));
-  oappend(F("addInfo('LD2410:interval',1,'Polling interval in 0.1 sec');"));
-  oappend(F("dd=addDropdown('LD2410','ha_discovery');"));
+  oappend(F("addInfo('LD2420:Baudrate',1,'Serial baudrate (default 115200)');"));
+  oappend(F("addInfo('LD2420:interval',1,'Polling interval in 0.1 sec');"));
+  oappend(F("dd=addDropdown('LD2420','ha_discovery');"));
   oappend(F("addOption(dd,'Disabled',0);"));
   oappend(F("addOption(dd,'Enabled',1);"));
 
-  LD24XX_DPRINT("appendConfigData():" GG_OK);
+  LD2420_DPRINT("appendConfigData():" GG_OK);
 }
 
 /**
  * @brief Called by WLED: Add usermod info to the WLED info page (/json/info)
  *
  */
-void UsermodLD24xxGeoGab::addToJsonInfo(JsonObject& root)
+void UmLD2420GeoGab::addToJsonInfo(JsonObject& root)
 {
-  LD24XX_DPRINT("addToJsonInfo(): Adding to info page");
+  LD2420_DPRINT("addToJsonInfo(): Adding to info page");
   JsonObject user = root["u"];
   if (user.isNull()) user = root.createNestedObject("u");
 
@@ -416,7 +413,7 @@ void UsermodLD24xxGeoGab::addToJsonInfo(JsonObject& root)
 
   /* Link to the calibration page */
   JsonArray calibRow = user.createNestedArray("Calibration Page");
-  calibRow.add("<a href='/ld24xx' style='text-decoration:underline;'>Click Here</a>");
+  calibRow.add("<a href='/LD2420' style='text-decoration:underline;'>Click Here</a>");
 
   if (!settings.enabled) return;
 
@@ -457,39 +454,12 @@ void UsermodLD24xxGeoGab::addToJsonInfo(JsonObject& root)
     line9.add(values.movingSignal);
     line9.add("%"); 
   }
-  LD24XX_DPRINT("addToJsonInfo():" GG_OK);
+  LD2420_DPRINT("addToJsonInfo():" GG_OK);
 }
 
 
 /**
- * @brief Reads custom state data from the JSON API.
- * 
- * This method is called whenever WLED receives a JSON state update.
- * It checks if the "LH24xx" object exists and updates the enabled status.
- * 
- * @param root The root JSON object containing the state update.
- */
-void UsermodLD24xxGeoGab::readFromJsonState(JsonObject& root) 
-{
-  LD24XX_DPRINT("readFromJsonState(): Reading state");
-  // The key must match the label used in addToJsonInfo exactly
-  JsonObject usermod = root["lh24xx"]; 
-  if (!usermod.isNull()) {
-    if (usermod.containsKey("active")) {
-      bool newState = usermod["active"];
-      if (newState != settings.enabled) {
-        settings.enabled = newState;      
-        pflags.ReInitialize = newState;   // if active reinitialize
-        LD24XX_DPRINT_VAR("readFromJsonState(): Setting usermod active", newState ? GG_GREEN "on" GG_RES : GG_YELLOW "off" GG_RES);
-      }
-    }
-  } 
-  LD24XX_DPRINT("readFromJsonState():" GG_OK);
-}
-
-
-/**
- * @brief Called by WLED: Add LD2410 sensor data to the JSON state (/json/state)
+ * @brief Called by WLED: Add LD2420 sensor data to the JSON state (/json/state)
  *
  * Provides:
  *  - Presence / Moving / Stationary flags
@@ -498,12 +468,12 @@ void UsermodLD24xxGeoGab::readFromJsonState(JsonObject& root)
  *
  * Uses only values stored in the `values` struct (deterministic).
  */
-void UsermodLD24xxGeoGab::addToJsonState(JsonObject& root)
+void UmLD2420GeoGab::addToJsonState(JsonObject& root)
 {
-  JsonObject sensor = root.createNestedObject("ld24xx");
+  JsonObject sensor = root.createNestedObject("LD2420");
 
   if (settings.enabled) {
-    LD24XX_DPRINT("addToJsonState(): Adding sensor date so /json/state");
+    LD2420_DPRINT("addToJsonState(): Adding sensor date so /json/state");
     sensor["active"]            = settings.enabled;
 
     sensor["Presence"]          = values.presence;
@@ -520,173 +490,71 @@ void UsermodLD24xxGeoGab::addToJsonState(JsonObject& root)
     sensor["error"]             = sflags.Error;
   } else {
     sensor["active"]            = settings.enabled;
-    LD24XX_DPRINT("addToJsonState(): LD24xx nicht aktive");
+    LD2420_DPRINT("addToJsonState(): LD2420 nicht aktive");
   }
-  LD24XX_DPRINT("addToJsonState(): done" GG_OK);
-}
-
-/************************************************************************************************************/
-/********************************************** S U B  C O D E **********************************************/
-/************************************************************************************************************/
-/**
- * @brief Simple Time Stamp
- *
-*/
-String UsermodLD24xxGeoGab::getMillisStamp() {
-  uint32_t now = millis();
-  // Sekunden mit 3 Nachkommastellen
-  float sec = now / 1000.0f;
-
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%8.3f", sec);  // z.B. "  12.347"
-  return String(buf);
-}
-
-
-/**
- * @brief Initialize LD2410 / LD2420 radar sensor
- *
- * - Starts UART interface
- * - Initializes the MyLD2410 driver
- * - Reads firmware information
- * - Requests current sensor configuration
- *
- */
-void UsermodLD24xxGeoGab::initLD24xx() {
-  LD24XX_DPRINT("initLD24xx() Re/Initializing LD2410 radar");
-
-  /* --- UART setup ---------------------------------------------------- */
-  LD24XX_DPRINT_VAR("UART RX pin: ", settings.rxpin);
-  LD24XX_DPRINT_VAR("UART TX pin: ", settings.txpin);
-
-  SENSORSERIAL.begin(settings.BaudRate, SERIAL_8N1, settings.rxpin, settings.txpin);
-
-  /* --- Sensor initialization ----------------------------------------- */
-  if (!radar.begin()) {
-    LD24XX_DPRINT("initLD24xx(): D2410 not detected on UART");
-    error(F("Can't connect to the sensor"));
-    sflags.InitSuccessful = false;
-
-  } else {
-    /* --- Firmware information ---------------------------------------- */
-    values.firmware = radar.getFirmware();
-    values.BTmac = radar.getMACstr();
-    //values.hasBLE = radar._mac[0];
-
-    LD24XX_DPRINT("initLD24xx(): Connected successfully to the sensor" GG_OK);
-    LD24XX_DPRINT_VAR("initLD24xx(): Firmware version: ", values.firmware);
-
-    loadCalibrationFromSensor();
-    sflags.InitSuccessful = true;
-    sflags.Error = false;
-  }
-  LD24XX_DPRINT("initLD24xx():" GG_OK);
+  LD2420_DPRINT("addToJsonState(): done" GG_OK);
 }
 
 /**
- * @brief Checks if there is an light control
+ * @brief Reads custom state data from the JSON API.
  * 
- * TODO: Daten auslesen in read sensor
- * TODO: Eigentlich das in "write to sensor" und "read form sensor" aufnehmen
+ * This method is called whenever WLED receives a JSON state update.
+ * It checks if the "LH24xx" object exists and updates the enabled status.
+ * 
+ * @param root The root JSON object containing the state update.
  */
-void UsermodLD24xxGeoGab::checkLightControl() {
-  radar.configMode();
-
-  if (!radar.requestAuxConfig()) {
-    LD24XX_DPRINT("readLightControlConfig(): AuxConfig request failed");
-    radar.configMode(false);
-    return;
-  }
-
-  // LightControl auswerten
-  LightControl lc = radar.getLightControl();
-
-  switch (lc) {
-    case LightControl::NO_LIGHT_CONTROL:
-      LD24XX_DPRINT("LightControl: none");
-      sflags.HasLightControl = false;
-      break;
-
-    case LightControl::LIGHT_BELOW_THRESHOLD:
-      LD24XX_DPRINT_ARG("LightControl: below threshold (%d)", radar.getLightThreshold());
-      sflags.HasLightControl = true;
-      break;
-
-    case LightControl::LIGHT_ABOVE_THRESHOLD:
-      LD24XX_DPRINT_ARG("LightControl: above threshold (%d)", radar.getLightThreshold());
-      sflags.HasLightControl = true;
-      break;
-
-    default:
-      LD24XX_DPRINT("LightControl: unknown");
-      sflags.HasLightControl = false;
-      break;
-  }
-  radar.configMode(false);
+void UmLD2420GeoGab::readFromJsonState(JsonObject& root) 
+{
+  LD2420_DPRINT("readFromJsonState(): Reading state");
+  // The key must match the label used in addToJsonInfo exactly
+  JsonObject usermod = root["lh24xx"]; 
+  if (!usermod.isNull()) {
+    if (usermod.containsKey("active")) {
+      bool newState = usermod["active"];
+      if (newState != settings.enabled) {
+        settings.enabled = newState;      
+        pflags.ReInitialize = newState;   // if active reinitialize
+        LD2420_DPRINT_VAR("readFromJsonState(): Setting usermod active", newState ? GG_GREEN "on" GG_RES : GG_YELLOW "off" GG_RES);
+      }
+    }
+  } 
+  LD2420_DPRINT("readFromJsonState():" GG_OK);
 }
 
+/**
+ * @brief Called by WLED when the device successfully connects to WiFi.
+ *
+ * This callback is triggered after DHCP has completed and a valid IP address
+ * is assigned. At this point the network stack is fully operational and
+ * network‑dependent features (MQTT, HTTP, HA Discovery, etc.) can be used.
+ *
+ * Typical use cases:
+ * - Print debug information (IP, gateway, subnet)
+ * - Trigger MQTT initialization
+ * - Reset network‑related flags
+ * - Start sensor communication that requires WiFi
+ */
+void UmLD2420GeoGab::onWiFiConnect() {
+  IPAddress ip = Network.localIP();
+  LD2420_DPRINT_ARG("onWiFiConnect() WiFi connected, IP: %s" GG_OK, ip.toString().c_str());
+}
 
 /**
- * @brief Read a complete LD2410 sensor frame and update all runtime values.
+ * @brief Called by WLED when the WiFi connection is lost.
  *
- * This function processes both normal sensor data and enhanced-mode data.
- * It must be called frequently from loop() to keep the usermod state updated.
+ * This callback is triggered whenever the station disconnects from the
+ * access point. No valid IP is available at this point and all network
+ * operations (MQTT, HTTP requests, HA Discovery) should be considered
+ * unavailable until onWiFiConnect() fires again.
  *
+ * Typical use cases:
+ * - Print debug information
+ * - Reset MQTT / HA flags
+ * - Pause network‑dependent sensor operations
  */
-void UsermodLD24xxGeoGab::readSensorData()
-{
-  LD24XX_DPRINT("readSensorData(): Reading data");
-  // 1) UART frame lesen
-  MyLD2410::Response resp = radar.check();
-
-  if (resp == MyLD2410::Response::FAIL) {
-    LD24XX_DPRINT("readSensorData(): Kein gültiges Frame" GG_FAIL);
-    return;
-  }
-
-  if (resp == MyLD2410::Response::ACK) {
-    LD24XX_DPRINT("readSensorData(): ACK – Steuer-/Konfigurationsantwort" GG_FAIL);
-    return;
-  }
-
-  // Ab hier: DATA-Frame
-  LD24XX_DPRINT("readSensorData(): DATA – Sensordaten aktualisiert" GG_OK);
-
-  // --- Normale Basisdaten ---------------------------------------------------
-  values.presence   = radar.presenceDetected();
-  values.moving     = radar.movingTargetDetected();
-  values.stationary = radar.stationaryTargetDetected();
-
-  values.movingDistance   = radar.movingTargetDistance();
-  values.stationaryDistance   = radar.stationaryTargetDistance();
-  values.presentsDistance = radar.detectedDistance();
-
-  values.stationarySignale = radar.stationaryTargetSignal();
-  values.movingSignal  = radar.movingTargetSignal();
-
-  // --- Enhanced Mode: Gate-Energien ----------------------------------------
-  if (radar.inEnhancedMode()) {
-    const auto& mv = radar.getMovingSignals();
-    const auto& st = radar.getStationarySignals();
-
-    for (uint8_t gate = 0; gate < 9; gate++) {
-      values.movingEnergy[gate]  = mv.values[gate];
-      values.staticEnergy[gate]  = st.values[gate];
-    }
-
-    LD24XX_DPRINT("readSensorData();: Enhanced mode: gate energies updated");
-  }
-
-  // Debug-Ausgabe (optional)
-  LD24XX_DPRINT("readSensorData(): Sensor data update:");
-  LD24XX_DPRINT_VAR(GG_CC(10) "Presence:" GG_CC(10),         values.presence);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Moving:" GG_CC(10),            values.moving);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Stationary: " GG_CC(10),       values.stationary);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Moving dist:" GG_CC(10),       values.movingDistance);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Static dist:" GG_CC(10),       values.stationaryDistance);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Present dist:" GG_CC(10),      values.presentsDistance);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Moving signal:" GG_CC(10),    values.movingSignal);
-  LD24XX_DPRINT_VAR(GG_CC(10) "Static signal:" GG_CC(10),    values.stationarySignale);
+void UmLD2420GeoGab::onWiFiDisconnect() {
+  LD2420_DPRINT("onWiFiConnect() WiFi disconnected (station lost connection)" GG_FAIL);
+  sflags.MqttInitialized = false;
 }
 
 
@@ -706,9 +574,9 @@ void UsermodLD24xxGeoGab::readSensorData()
  *
  * @param sessionPresent True if an existing MQTT session was resumed.
  */
-void UsermodLD24xxGeoGab::onMqttConnect(bool sessionPresent)
+void UmLD2420GeoGab::onMqttConnect(bool sessionPresent)
 {
-    LD24XX_DPRINT("onMqttConnect(): MQTT Connected." GG_OK);
+    LD2420_DPRINT("onMqttConnect(): MQTT Connected." GG_OK);
     sflags.MqttInitialized = true;
     if (!settings.HADiscovery) return;
 
@@ -734,32 +602,198 @@ void UsermodLD24xxGeoGab::onMqttConnect(bool sessionPresent)
  *
  * @param reason Disconnect reason code provided by AsyncMqttClient.
  */
-void UsermodLD24xxGeoGab::onMqttDisconnect(int8_t reason)
+void UmLD2420GeoGab::onMqttDisconnect(int8_t reason)
 {
-    LD24XX_DPRINT("onMqttDisconnect(): MQTT Disconnected." GG_FAIL);
+    LD2420_DPRINT("onMqttDisconnect(): MQTT Disconnected." GG_FAIL);
     // MQTT is no longer ready
     sflags.MqttInitialized = false;
 
     // Optional: allow HA discovery to be sent again on reconnect
     // sflags.HADiscoverySent = false;
 
-    LD24XX_DPRINT_ARG("onMqttDisconnect(): Reason=%d", reason);
+    LD2420_DPRINT_ARG("onMqttDisconnect(): Reason=%d", reason);
 }
+
+/******************************************************************************************************************************/
+/********************************************** U S E R M O D  S U B  C O D E *************************************************/
+/******************************************************************************************************************************/
+/**
+ * @brief Simple time index stamp for the debug log
+ *
+*/
+String UmLD2420GeoGab::getMillisStamp() {
+  uint32_t now = millis();
+  // Sekunden mit 3 Nachkommastellen
+  float sec = now / 1000.0f;
+
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%8.3f", sec);  // z.B. "  12.347"
+  return String(buf);
+}
+
+
+/**
+ * @brief Initialize LD2420 / LD2420 radar sensor
+ *
+ * - Starts UART interface
+ * - Initializes the MyLD2420 driver
+ * - Reads firmware information
+ * - Requests current sensor configuration
+ *
+ */
+void UmLD2420GeoGab::initLD2420() {
+  LD2420_DPRINT("initLD2420() Re/Initializing LD2420 radar");
+
+  /* --- UART setup ---------------------------------------------------- */
+  LD2420_DPRINT_ARG("initLD2420(): UART RX pin: %d -> TX Pin of the sensor", settings.rxpin);
+  LD2420_DPRINT_ARG("initLD2420(): UART TX pin: %d -> RX Pin of the sensor", settings.txpin);
+
+  SENSORSERIAL.begin(settings.BaudRate, SERIAL_8N1, settings.rxpin, settings.txpin);
+
+  /* --- Sensor initialization ----------------------------------------- */
+  if (!radar.begin()) {
+    LD2420_DPRINT("initLD2420(): D2410 not detected on UART");
+    error(F("Can't connect to the sensor"));
+    sflags.InitSuccessful = false;
+    
+
+  } else {
+    /* --- Firmware information ---------------------------------------- */
+    values.firmware = radar.getFirmware();
+    values.BTmac = radar.getMACstr();
+    //values.hasBLE = radar._mac[0];
+
+    LD2420_DPRINT("initLD2420(): Connected successfully to the sensor" GG_OK);
+    LD2420_DPRINT_VAR("initLD2420(): Firmware version: ", values.firmware);
+
+    loadCalibrationFromSensor();
+    sflags.InitSuccessful = true;
+    sflags.Error = false;
+  }
+  LD2420_DPRINT("initLD2420():" GG_OK);
+}
+
+/**
+ * @brief Checks if there is an light control
+ * 
+ * TODO: Daten auslesen in read sensor
+ * TODO: Eigentlich das in "write to sensor" und "read form sensor" aufnehmen
+ */
+void UmLD2420GeoGab::checkLightControl() {
+  radar.configMode();
+
+  if (!radar.requestAuxConfig()) {
+    LD2420_DPRINT("readLightControlConfig(): AuxConfig request failed");
+    radar.configMode(false);
+    return;
+  }
+
+  // LightControl auswerten
+  LightControl lc = radar.getLightControl();
+
+  switch (lc) {
+    case LightControl::NO_LIGHT_CONTROL:
+      LD2420_DPRINT("LightControl: none");
+      sflags.HasLightControl = false;
+      break;
+
+    case LightControl::LIGHT_BELOW_THRESHOLD:
+      LD2420_DPRINT_ARG("LightControl: below threshold (%d)", radar.getLightThreshold());
+      sflags.HasLightControl = true;
+      break;
+
+    case LightControl::LIGHT_ABOVE_THRESHOLD:
+      LD2420_DPRINT_ARG("LightControl: above threshold (%d)", radar.getLightThreshold());
+      sflags.HasLightControl = true;
+      break;
+
+    default:
+      LD2420_DPRINT("LightControl: unknown");
+      sflags.HasLightControl = false;
+      break;
+  }
+  radar.configMode(false);
+}
+
+
+/**
+ * @brief Read a complete LD2420 sensor frame and update all runtime values.
+ *
+ * This function processes both normal sensor data and enhanced-mode data.
+ * It must be called frequently from loop() to keep the usermod state updated.
+ *
+ */
+void UmLD2420GeoGab::readSensorData()
+{
+  LD2420_DPRINT("readSensorData(): Reading data");
+  // 1) UART frame lesen
+  MyLD2420::Response resp = radar.check();
+
+  if (resp == MyLD2420::Response::FAIL) {
+    LD2420_DPRINT("readSensorData(): Kein gültiges Frame" GG_FAIL);
+    return;
+  }
+
+  if (resp == MyLD2420::Response::ACK) {
+    LD2420_DPRINT("readSensorData(): ACK – Steuer-/Konfigurationsantwort" GG_FAIL);
+    return;
+  }
+
+  // Ab hier: DATA-Frame
+  LD2420_DPRINT("readSensorData(): DATA – Sensordaten aktualisiert" GG_OK);
+
+  // --- Normale Basisdaten ---------------------------------------------------
+  values.presence   = radar.presenceDetected();
+  values.moving     = radar.movingTargetDetected();
+  values.stationary = radar.stationaryTargetDetected();
+
+  values.movingDistance   = radar.movingTargetDistance();
+  values.stationaryDistance   = radar.stationaryTargetDistance();
+  values.presentsDistance = radar.detectedDistance();
+
+  values.stationarySignale = radar.stationaryTargetSignal();
+  values.movingSignal  = radar.movingTargetSignal();
+
+  // --- Enhanced Mode: Gate-Energien ----------------------------------------
+  if (radar.inEnhancedMode()) {
+    const auto& mv = radar.getMovingSignals();
+    const auto& st = radar.getStationarySignals();
+
+    for (uint8_t gate = 0; gate < 9; gate++) {
+      values.movingEnergy[gate]  = mv.values[gate];
+      values.staticEnergy[gate]  = st.values[gate];
+    }
+
+    LD2420_DPRINT("readSensorData();: Enhanced mode: gate energies updated");
+  }
+
+  // Debug-Ausgabe (optional)
+  LD2420_DPRINT("readSensorData(): Sensor data update:");
+  LD2420_DPRINT_VAR(GG_CC(10) "Presence:" GG_CC(10),         values.presence);
+  LD2420_DPRINT_VAR(GG_CC(10) "Moving:" GG_CC(10),            values.moving);
+  LD2420_DPRINT_VAR(GG_CC(10) "Stationary: " GG_CC(10),       values.stationary);
+  LD2420_DPRINT_VAR(GG_CC(10) "Moving dist:" GG_CC(10),       values.movingDistance);
+  LD2420_DPRINT_VAR(GG_CC(10) "Static dist:" GG_CC(10),       values.stationaryDistance);
+  LD2420_DPRINT_VAR(GG_CC(10) "Present dist:" GG_CC(10),      values.presentsDistance);
+  LD2420_DPRINT_VAR(GG_CC(10) "Moving signal:" GG_CC(10),    values.movingSignal);
+  LD2420_DPRINT_VAR(GG_CC(10) "Static signal:" GG_CC(10),    values.stationarySignale);
+}
+
 
 
 /**
  * @brief Publish Home Assistant MQTT Discovery configuration.
  *
- * Publishes one HA sensor per LD2410 value:
+ * Publishes one HA sensor per LD2420 value:
  */
-void UsermodLD24xxGeoGab::haDiscovery()
+void UmLD2420GeoGab::haDiscovery()
 {
   if (!settings.HADiscovery || !sflags.MqttInitialized) {
-    LD24XX_DPRINT("haDiscovery(): HA Discovery not active");
+    LD2420_DPRINT("haDiscovery(): HA Discovery not active");
     return;
   }
   
-  LD24XX_DPRINT("haDiscovery(): Sending discovery block");
+  LD2420_DPRINT("haDiscovery(): Sending discovery block");
 
   // if (!mqtt) return;
   // if (!mqtt->connected()) return;
@@ -775,21 +809,21 @@ void UsermodLD24xxGeoGab::haDiscovery()
   } sensors[] = {
 
     // --- Präsenz-Flags ------------------------------------------------------
-    { "presence",        "LD2410 Presence",         "presence", nullptr, "mdi:motion-sensor" },
-    { "moving",          "LD2410 Moving",           nullptr,    nullptr, "mdi:run" },
-    { "stationary",      "LD2410 Stationary",       nullptr,    nullptr, "mdi:human-handsdown" },
+    { "presence",        "LD2420 Presence",         "presence", nullptr, "mdi:motion-sensor" },
+    { "moving",          "LD2420 Moving",           nullptr,    nullptr, "mdi:run" },
+    { "stationary",      "LD2420 Stationary",       nullptr,    nullptr, "mdi:human-handsdown" },
 
     // --- Distanzen ----------------------------------------------------------
-    { "movingDistance",  "LD2410 Moving Distance",  "distance", "cm",    "mdi:arrow-right-bold" },
-    { "stationaryDistance",  "LD2410 Static Distance",  "distance", "cm",    "mdi:arrow-right" },
-    { "presentsDistance","LD2410 Presence Distance","distance", "cm",    "mdi:map-marker-distance" },
+    { "movingDistance",  "LD2420 Moving Distance",  "distance", "cm",    "mdi:arrow-right-bold" },
+    { "stationaryDistance",  "LD2420 Static Distance",  "distance", "cm",    "mdi:arrow-right" },
+    { "presentsDistance","LD2420 Presence Distance","distance", "cm",    "mdi:map-marker-distance" },
 
     // --- Signalstärken ------------------------------------------------------
-    { "movingSignal",    "LD2410 Moving Signal",    nullptr,    nullptr, "mdi:signal" },
-    { "staticSignal",    "LD2410 Static Signal",    nullptr,    nullptr, "mdi:signal" },
+    { "movingSignal",    "LD2420 Moving Signal",    nullptr,    nullptr, "mdi:signal" },
+    { "staticSignal",    "LD2420 Static Signal",    nullptr,    nullptr, "mdi:signal" },
 
     // --- Engineering Mode ---------------------------------------------------
-    { "engMode",         "LD2410 Engineering Mode", nullptr,    nullptr, "mdi:cog" }
+    { "engMode",         "LD2420 Engineering Mode", nullptr,    nullptr, "mdi:cog" }
   };
 
   DynamicJsonDocument doc(2048);
@@ -799,77 +833,75 @@ void UsermodLD24xxGeoGab::haDiscovery()
     JsonObject p = doc.to<JsonObject>();
 
     p["name"]        = s.name;
-    p["unique_id"]   = String("ld2410_") + s.key;
-    p["state_topic"] = String("ld2410/") + s.key;
+    p["unique_id"]   = String("LD2420_") + s.key;
+    p["state_topic"] = String("LD2420/") + s.key;
 
     if (s.device_class) p["device_class"] = s.device_class;
     if (s.unit)         p["unit_of_measurement"] = s.unit;
     if (s.icon)         p["icon"] = s.icon;
 
     JsonObject dev = p.createNestedObject("device");
-    dev["identifiers"]  = "ld2410_sensor";
-    dev["name"]         = "LD2410 Radar Sensor";
+    dev["identifiers"]  = "LD2420_sensor";
+    dev["name"]         = "LD2420 Radar Sensor";
     dev["manufacturer"] = "HiLink";
-    dev["model"]        = "LD2410";
+    dev["model"]        = "LD2420";
 
     String payload;
     serializeJson(p, payload);
 
     String topic = String(base) + "/" + s.key + "/config";
-    mqtt->publish(topic.c_str(), true, payload.c_str());
-
-     
+    mqtt->publish(topic.c_str(), true, payload.c_str());   
   }
-  LD24XX_DPRINT("haDiscovery(): Published" GG_OK);
+  LD2420_DPRINT("haDiscovery(): Published" GG_OK);
 }
 
 
 /**
- * @brief Publish current LD2410 sensor state values to MQTT.
+ * @brief Publish current LD2420 sensor state values to MQTT.
  *
  * This function is intended to be called after each sensor update,
  * provided that Home Assistant discovery is enabled and MQTT has been
  * successfully initialized.
  */
-void UsermodLD24xxGeoGab::haPublishState()
+void UmLD2420GeoGab::haPublishState()
 {
   if (!settings.HADiscovery) return;
   if (!sflags.MqttInitialized) return;
 
-  LD24XX_DPRINT("haPublishState(): Publishing Sensor Data.");
+  LD2420_DPRINT("haPublishState(): Publishing Sensor Data.");
 
-  mqtt->publish("ld2410/presence",   true, values.presence   ? "1" : "0");
-  mqtt->publish("ld2410/moving",     true, values.moving     ? "1" : "0");
-  mqtt->publish("ld2410/stationary", true, values.stationary ? "1" : "0");
+  mqtt->publish("LD2420/presence",   true, values.presence   ? "1" : "0");
+  mqtt->publish("LD2420/moving",     true, values.moving     ? "1" : "0");
+  mqtt->publish("LD2420/stationary", true, values.stationary ? "1" : "0");
 
   String movingStr  = String(values.movingDistance);
   String staticStr  = String(values.stationaryDistance);
 
-  mqtt->publish("ld2410/movingDistance", true, movingStr.c_str());
-  mqtt->publish("ld2410/stationaryDistance", true, staticStr.c_str());
+  mqtt->publish("LD2420/movingDistance", true, movingStr.c_str());
+  mqtt->publish("LD2420/stationaryDistance", true, staticStr.c_str());
 
-  mqtt->publish("ld2410/engMode", true, sflags.EngineeringMode ? "1" : "0");
+  mqtt->publish("LD2420/engMode", true, sflags.EngineeringMode ? "1" : "0");
 }
 
 
-/******************************************************************************************************** */
-/************************************ Usermod Webpage relatet routines ************************************/
-/******************************************************************************************************** */
+/******************************************************************************************************************************/
+/********************************************** Usermod Webpage relatet routines **********************************************/
+/******************************************************************************************************************************/
 /**
  * @brief Register an error condition with message (RAM string).
  */
-void UsermodLD24xxGeoGab::error(const char* msg)
+void UmLD2420GeoGab::error(const char* msg)
 {
     sflags.Error = true;
     values.errorCounter++;
     values.lastMessage = msg;
-    LD24XX_DPRINT_ARG("error(): %s (%d)" GG_FAIL, msg, values.errorCounter);
+    LD2420_DPRINT_ARG("error(): %s (%d)" GG_FAIL, msg, values.errorCounter);
 }
 
 /**
  * @brief Register an error condition with message (Flash string).
  */
-void UsermodLD24xxGeoGab::error(const __FlashStringHelper* msg)
+void UmLD2420GeoGab::error(const __FlashStringHelper* msg)
 {
     char buffer[128];
     strncpy_P(buffer, (PGM_P)msg, sizeof(buffer));
@@ -880,11 +912,11 @@ void UsermodLD24xxGeoGab::error(const __FlashStringHelper* msg)
 /**
  * @brief Clear the error status
  */
-void UsermodLD24xxGeoGab::errorClear()
+void UmLD2420GeoGab::errorClear()
 {
     sflags.Error = false;
     values.lastMessage = "";
-    LD24XX_DPRINT("errorClear(): Error status cleared" GG_OK);
+    LD2420_DPRINT("errorClear(): Error status cleared" GG_OK);
 }
 
 
@@ -900,14 +932,14 @@ void UsermodLD24xxGeoGab::errorClear()
  *
  * Persistente Werte werden NICHT verändert.
  */
-void UsermodLD24xxGeoGab::enterCalibrationMode()
+void UmLD2420GeoGab::enterCalibrationMode()
 {
   // Engineering Mode aktivieren
-  LD24XX_DPRINT("enterCalibrationMode(): Activating calibration mode");
+  LD2420_DPRINT("enterCalibrationMode(): Activating calibration mode");
 
   // Already active?
   if (sflags.EngineeringMode) {
-    LD24XX_DPRINT("enterCalibrationMode() Already active" GG_OK);
+    LD2420_DPRINT("enterCalibrationMode() Already active" GG_OK);
   } else {
     // Try to enable enhanced mode on the sensor
     if (!radar.enhancedMode(true)) {
@@ -919,7 +951,7 @@ void UsermodLD24xxGeoGab::enterCalibrationMode()
   // Success
   strip.suspend();      // Strop WLED Effects to save processing power
   sflags.CalibrationMode = true;
-  LD24XX_DPRINT("enterCalibrationMode(): Enhanced mode active" GG_OK);
+  LD2420_DPRINT("enterCalibrationMode(): Enhanced mode active" GG_OK);
 }
 
 /**
@@ -931,17 +963,17 @@ void UsermodLD24xxGeoGab::enterCalibrationMode()
  *  - Engineering Mode deaktivieren
  *  - HA-Publishing wieder aktivieren
  */
-void UsermodLD24xxGeoGab::exitCalibrationMode()
+void UmLD2420GeoGab::exitCalibrationMode()
 {
-  LD24XX_DPRINT("exitCalibrationMode(): Deactivating enhanced mode");
+  LD2420_DPRINT("exitCalibrationMode(): Deactivating enhanced mode");
 
   // Already inactive?
   if (!sflags.EngineeringMode) {
-    LD24XX_DPRINT("exitCalibrationMode() Already inactive" GG_OK);
+    LD2420_DPRINT("exitCalibrationMode() Already inactive" GG_OK);
   } else {
     // Try to disable enhanced mode on the sensor
     if (!radar.enhancedMode(false)) {
-      LD24XX_DPRINT("exitCalibrationMode(): Failed to deactivate enhanced mode" GG_FAIL) ;
+      LD2420_DPRINT("exitCalibrationMode(): Failed to deactivate enhanced mode" GG_FAIL) ;
       error("Failed to deactivate enhanced mode");
       return;
     }
@@ -949,17 +981,17 @@ void UsermodLD24xxGeoGab::exitCalibrationMode()
   
   strip.resume();        // WLED wieder aktivieren
   sflags.CalibrationMode = false;
-  LD24XX_DPRINT("exitCalibrationMode(): Enhanced mode disabled" GG_FAIL) ;
+  LD2420_DPRINT("exitCalibrationMode(): Enhanced mode disabled" GG_FAIL) ;
 }
 
 /**
- * @brief Execute the LD2410 automatic threshold detection routine.
+ * @brief Execute the LD2420 automatic threshold detection routine.
  *
  * This function is called exclusively from the FlagProcessor when the
  * AutoThresholds flag is set. It performs the complete auto-threshold
  * workflow synchronously:
  *
- *  - Starts the auto-threshold routine on the LD2410 sensor
+ *  - Starts the auto-threshold routine on the LD2420 sensor
  *    (supported only on firmware >= 2.44)
  *
  *  - Polls radar.getAutoStatus() until:
@@ -979,14 +1011,14 @@ void UsermodLD24xxGeoGab::exitCalibrationMode()
  * This function blocks until the routine finishes. It does not run in the
  * background and does not rely on loop() polling.
  */
-void UsermodLD24xxGeoGab::calculateAutoThresholds()
+void UmLD2420GeoGab::calculateAutoThresholds()
 {
-    LD24XX_DPRINT("calculateAutoThresholds(): starting auto-threshold routine");
+    LD2420_DPRINT("calculateAutoThresholds(): starting auto-threshold routine");
 
     // --- Start the auto-threshold routine -----------------------------------
     if(!sflags.AutoThresholdsRun) {
       if (!radar.autoThresholds(settings.autoThresholdsTimeout)) {
-          LD24XX_DPRINT("calculateAutoThresholds(): rejected (Firmware < 2.44?)" GG_FAIL);
+          LD2420_DPRINT("calculateAutoThresholds(): rejected (Firmware < 2.44?)" GG_FAIL);
           error(F("Auto-Threshold rejected (Firmware < 2.44?)"));
           pflags.AutoThresholds = false;                // Stop the flag processor
           sflags.AutoThresholdsRun = true;              // AutoThresholds stoped
@@ -1000,7 +1032,7 @@ void UsermodLD24xxGeoGab::calculateAutoThresholds()
         if (st == AutoStatus::NOT_IN_PROGRESS || st == AutoStatus::NOT_SET) return;
 
         if (st == AutoStatus::COMPLETED) {
-            LD24XX_DPRINT("calculateAutoThresholds(): completed successfully" GG_OK);
+            LD2420_DPRINT("calculateAutoThresholds(): completed successfully" GG_OK);
             pflags.AutoThresholds = false;                // Stop the flag processor
             sflags.AutoThresholdsRun = true;              // AutoThresholds stoped
             pflags.LoadCalibration = true;                // Load the new calibration data
@@ -1011,7 +1043,7 @@ void UsermodLD24xxGeoGab::calculateAutoThresholds()
 }
 
 /**
- * @brief Überträgt die komplette Kalibrierungsstruktur in den LD2410.
+ * @brief Überträgt die komplette Kalibrierungsstruktur in den LD2420.
  *
  * Diese Funktion:
  *   1. Wechselt in den Konfigurationsmodus.
@@ -1024,13 +1056,13 @@ void UsermodLD24xxGeoGab::calculateAutoThresholds()
  * Die Funktion aktiviert NICHT automatisch den Enhanced Mode.
  * Der Enhanced Mode wird ausschließlich durch Start/Stop-Calibration gesteuert.
  */
-void UsermodLD24xxGeoGab::writeCalibrationToSensor()
+void UmLD2420GeoGab::writeCalibrationToSensor()
 {
-  LD24XX_DPRINT("writeCalibrationToSensor(): begin");
+  LD2420_DPRINT("writeCalibrationToSensor(): begin");
 
   // 1) In den Konfigurationsmodus wechseln
   if (!radar.configMode(true)) {
-    LD24XX_DPRINT("writeCalibrationToSensor(): cannot enter config mode" GG_FAIL);
+    LD2420_DPRINT("writeCalibrationToSensor(): cannot enter config mode" GG_FAIL);
     error(F("Cannot enter config mode"));
     return;
   }
@@ -1039,20 +1071,20 @@ void UsermodLD24xxGeoGab::writeCalibrationToSensor()
   for (uint8_t gate = 0; gate < 9; gate++) {
     uint8_t mv = calibration.movingThresholds[gate];
     uint8_t st = calibration.stationaryThresholds[gate];
-    LD24XX_DPRINT_ARG(GG_CC(10) "Gate %u: moving=%u stationary=%u", gate, mv, st);
+    LD2420_DPRINT_ARG(GG_CC(10) "Gate %u: moving=%u stationary=%u", gate, mv, st);
     radar.setGateParameters(gate, mv, st);
   }
 
   // 3) Max Gates + No-One Window setzen
-  LD24XX_DPRINT_ARG(GG_CC(10)"MaxMovingGate=%u", calibration.maxMovingGate);
-  LD24XX_DPRINT_ARG(GG_CC(10)"MaxStationaryGate=%u", calibration.maxStationaryGate);
-  LD24XX_DPRINT_ARG(GG_CC(10)"NoOneWindow=%u", calibration.noOneWindow);
+  LD2420_DPRINT_ARG(GG_CC(10)"MaxMovingGate=%u", calibration.maxMovingGate);
+  LD2420_DPRINT_ARG(GG_CC(10)"MaxStationaryGate=%u", calibration.maxStationaryGate);
+  LD2420_DPRINT_ARG(GG_CC(10)"NoOneWindow=%u", calibration.noOneWindow);
 
   radar.setMaxGate(calibration.maxMovingGate, calibration.maxStationaryGate);
   radar.setNoOneWindow(calibration.noOneWindow);
 
   // 4) Auflösung setzen
-  LD24XX_DPRINT_ARG(GG_CC(10)"Resolution=%u", calibration.resolution);
+  LD2420_DPRINT_ARG(GG_CC(10)"Resolution=%u", calibration.resolution);
   radar.setResolution(calibration.resolution);
 
   // 5) Konfigurationsmodus verlassen
@@ -1061,18 +1093,18 @@ void UsermodLD24xxGeoGab::writeCalibrationToSensor()
   // 6) Optionaler Neustart (abhängig von Library)
   // radar.restart();   // Nur falls deine Library das verlangt
 
-  LD24XX_DPRINT("writeCalibrationToSensor:" GG_OK);
+  LD2420_DPRINT("writeCalibrationToSensor:" GG_OK);
 }
 
 /**
- * @brief Load calibration parameters from LD2410 sensor flash.
+ * @brief Load calibration parameters from LD2420 sensor flash.
  *
  * Liest die persistent gespeicherten Kalibrierungswerte aus dem Sensor
  * und übernimmt sie in die lokale Struktur.
  */
-void UsermodLD24xxGeoGab::loadCalibrationFromSensor()
+void UmLD2420GeoGab::loadCalibrationFromSensor()
 {
-  LD24XX_DPRINT("loadCalibrationFromSensor(): reading from sensor");
+  LD2420_DPRINT("loadCalibrationFromSensor(): reading from sensor");
 
   // Alle Parameter vom Sensor anfordern
   radar.requestParameters();
@@ -1082,35 +1114,35 @@ void UsermodLD24xxGeoGab::loadCalibrationFromSensor()
   const auto& mv = radar.getMovingThresholds();
   for (uint8_t gate = 0; gate < 9; gate++) {
     calibration.movingThresholds[gate] = mv.values[gate];
-    LD24XX_DPRINT_ARG(GG_CC(10)"Gate %u movingThreshold = %u", gate, mv.values[gate]);
+    LD2420_DPRINT_ARG(GG_CC(10)"Gate %u movingThreshold = %u", gate, mv.values[gate]);
   }
 
   // Stationary thresholds
   const auto& st = radar.getStationaryThresholds();
   for (uint8_t gate = 0; gate < 9; gate++) {
     calibration.stationaryThresholds[gate] = st.values[gate];
-    LD24XX_DPRINT_ARG(GG_CC(10)"Gate %u stationaryThreshold = %u", gate, st.values[gate]);
+    LD2420_DPRINT_ARG(GG_CC(10)"Gate %u stationaryThreshold = %u", gate, st.values[gate]);
   }
 
   // Max gates
   calibration.maxMovingGate     = radar.getMaxMovingGate();
   calibration.maxStationaryGate = radar.getMaxStationaryGate();
-  LD24XX_DPRINT_ARG(GG_CC(15)"maxMovingGate     = %u", calibration.maxMovingGate);
-  LD24XX_DPRINT_ARG(GG_CC(15)"maxStationaryGate = %u", calibration.maxStationaryGate);
+  LD2420_DPRINT_ARG(GG_CC(15)"maxMovingGate     = %u", calibration.maxMovingGate);
+  LD2420_DPRINT_ARG(GG_CC(15)"maxStationaryGate = %u", calibration.maxStationaryGate);
 
   // No-one window
   calibration.noOneWindow = radar.getNoOneWindow();
-  LD24XX_DPRINT_ARG(GG_CC(15)"noOneWindow = %u", calibration.noOneWindow);
+  LD2420_DPRINT_ARG(GG_CC(15)"noOneWindow = %u", calibration.noOneWindow);
 
   // Resolution
   calibration.resolution = radar.getResolution();
-  LD24XX_DPRINT_ARG(GG_CC(15)"resolution = %u", calibration.resolution);
+  LD2420_DPRINT_ARG(GG_CC(15)"resolution = %u", calibration.resolution);
 
-  LD24XX_DPRINT("loadCalibrationFromSensor():" GG_OK);
+  LD2420_DPRINT("loadCalibrationFromSensor():" GG_OK);
 }
 
 /**
- * @brief Automatically detect the correct UART baudrate for the LD2410 sensor.
+ * @brief Automatically detect the correct UART baudrate for the LD2420 sensor.
  *
  * Logic:
  *  1. If the current settings.baudrate already works with radar.begin(),
@@ -1124,21 +1156,21 @@ void UsermodLD24xxGeoGab::loadCalibrationFromSensor()
  *
  *  3. If no baudrate works, return -1.
  *
- * This method is deterministic and relies solely on the LD2410 driver's
+ * This method is deterministic and relies solely on the LD2420 driver's
  * internal protocol validation. No custom packet parsing is required.
  *
  * @return int
  *   - Detected baudrate (9600–115200) on success
  *   - -1 if no working baudrate was found
  */
-int UsermodLD24xxGeoGab::autoDetectBaudrate()
+int UmLD2420GeoGab::autoDetectBaudrate()
 {
     // 1. First try the currently configured baudrate
     SENSORSERIAL.begin(settings.BaudRate, SERIAL_8N1, settings.rxpin, settings.txpin);
     delay(50);
 
     if (radar.begin()) {
-        LD24XX_DPRINT_ARG("autoDetectBaudrate(): Baudrate: %d" GG_OK, settings.BaudRate);
+        LD2420_DPRINT_ARG("autoDetectBaudrate(): Baudrate: %d" GG_OK, settings.BaudRate);
         return settings.BaudRate;
     }
 
@@ -1153,12 +1185,12 @@ int UsermodLD24xxGeoGab::autoDetectBaudrate()
         delay(50);
 
         if (radar.begin()) {
-            LD24XX_DPRINT_ARG("autoDetectBaudrate(): Auto-detected baudrate: %d" GG_OK, baud);
+            LD2420_DPRINT_ARG("autoDetectBaudrate(): Auto-detected baudrate: %d" GG_OK, baud);
             return baud;
         }
     }
 
-    LD24XX_DPRINT("autoDetectBaudrate(): Auto baudrate detection failed" GG_FAIL);
+    LD2420_DPRINT("autoDetectBaudrate(): Auto baudrate detection failed" GG_FAIL);
     return -1;
 }
 
@@ -1167,20 +1199,20 @@ int UsermodLD24xxGeoGab::autoDetectBaudrate()
 /***************************************** Endpoints User Webpage *****************************************/
 /******************************************************************************************************** */
 /**
- * @brief Register LD2410 JSON API endpoints.
+ * @brief Register LD2420 JSON API endpoints.
  *
  * Registriert:
- *  - GET  /json/ld2410  → Live-Daten
- *  - POST /json/ld2410  → Kommandos
- *  - Usermod Webpage: http://<wled-ip>/um/ld2410
+ *  - GET  /json/LD2420  → Live-Daten
+ *  - POST /json/LD2420  → Kommandos
+ *  - Usermod Webpage: http://<wled-ip>/um/LD2420
  *
  * Wird typischerweise im setup() des Usermods aufgerufen.
  */
-void UsermodLD24xxGeoGab::registerEndpoints()
+void UmLD2420GeoGab::registerEndpoints()
 {
-    LD24XX_DPRINT("registerEndpoints(): Startet"); 
+    LD2420_DPRINT("registerEndpoints(): Startet"); 
     // EIN EINZIGER GET-ENDPOINT für HTML + JSON
-    server.on("/ld24xx", HTTP_GET,
+    server.on("/LD2420", HTTP_GET,
         [this](AsyncWebServerRequest *request)
         {
             // JSON-Modus?
@@ -1195,7 +1227,7 @@ void UsermodLD24xxGeoGab::registerEndpoints()
     );
 
     // POST-ENDPOINT bleibt wie er ist (JSON-API)
-    server.on("/ld24xx/json", HTTP_POST,
+    server.on("/LD2420/json", HTTP_POST,
         [this](AsyncWebServerRequest *request)
         {
             if (!request->hasParam("json", true)) {
@@ -1218,21 +1250,21 @@ void UsermodLD24xxGeoGab::registerEndpoints()
             this->handleJsonPost(request, json);
         }
     );
-    LD24XX_DPRINT("registerEndpoints():" GG_OK); 
+    LD2420_DPRINT("registerEndpoints():" GG_OK); 
 }
 
 
 /**
- * @brief Memory-safe JSON GET handler for LD2410 data.
+ * @brief Memory-safe JSON GET handler for LD2420 data.
  * 
  * This version replaces AsyncJsonResponse with a direct DynamicJsonDocument 
  * to avoid heap allocation issues.
  * 
  * @param request Pointer to the AsyncWebServerRequest.
  */
-void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
+void UmLD2420GeoGab::handleJsonGet(AsyncWebServerRequest* request)
 {
-  LD24XX_DPRINT("handleJsonGet(): Startet"); 
+  LD2420_DPRINT("handleJsonGet(): Startet"); 
   // --- MODE ERMITTELN ---
   String mode = "all";
   if (request->hasParam("json")) {
@@ -1246,7 +1278,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
 
   if (!valid) {
     request->send(400, "application/json", "{\"error\":\"invalid json mode\"}");
-    LD24XX_DPRINT("handleJsonGet(): invalid json mode" GG_FAIL); 
+    LD2420_DPRINT("handleJsonGet(): invalid json mode" GG_FAIL); 
     return;
   }
 
@@ -1257,7 +1289,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
 
   if (root.isNull()) {
     request->send(500, "application/json", "{\"error\":\"JSON buffer allocation failed\"}");
-    LD24XX_DPRINT("handleJsonGet(): JSON buffer allocation failed" GG_FAIL); 
+    LD2420_DPRINT("handleJsonGet(): JSON buffer allocation failed" GG_FAIL); 
     return;
   }
 
@@ -1265,7 +1297,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   // SECTION: calibration
   // --------------------------------------------------------------------------
   if (mode == "calibration" || mode == "all") {
-    LD24XX_DPRINT("handleJsonGet(): Calibration" GG_OK); 
+    LD2420_DPRINT("handleJsonGet(): Calibration" GG_OK); 
     JsonObject cal = root.createNestedObject("calibration");
     JsonArray mv = cal.createNestedArray("movingThresholds");
     JsonArray st = cal.createNestedArray("stationaryThresholds");
@@ -1284,7 +1316,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   // SECTION: values (live + static)
   // --------------------------------------------------------------------------
   if (mode == "values" || mode == "all") {
-    LD24XX_DPRINT("handleJsonGet(): all " GG_OK); 
+    LD2420_DPRINT("handleJsonGet(): all " GG_OK); 
     JsonObject valuesObj = root.createNestedObject("values");
     JsonObject live = valuesObj.createNestedObject("live");
     live["presence"]           = values.presence;
@@ -1314,7 +1346,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   // SECTION: pflags
   // --------------------------------------------------------------------------
   if (mode == "pflags" || mode == "all") {
-    LD24XX_DPRINT("handleJsonGet(): pflags " GG_OK); 
+    LD2420_DPRINT("handleJsonGet(): pflags " GG_OK); 
     JsonObject pf = root.createNestedObject("pflags");
     pf["restartModule"]    = pflags.RestartModule;
     pf["factoryReset"]     = pflags.FactoryReset;
@@ -1328,7 +1360,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   // SECTION: stati
   // --------------------------------------------------------------------------
   if (mode == "stati" || mode == "all") {
-    LD24XX_DPRINT("handleJsonGet(): stati " GG_OK); 
+    LD2420_DPRINT("handleJsonGet(): stati " GG_OK); 
     JsonObject st = root.createNestedObject("stati");
     st["initSuccessful"]      = sflags.InitSuccessful;
     st["mqttInitialized"]     = sflags.MqttInitialized;
@@ -1343,7 +1375,7 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   // SECTION: live (für schnelles Polling optimiert)
   // --------------------------------------------------------------------------
   if (mode == "live") { // "all" enthält live bereits via "values"
-    LD24XX_DPRINT("handleJsonGet(): live " GG_OK); 
+    LD2420_DPRINT("handleJsonGet(): live " GG_OK); 
     JsonObject live = root.createNestedObject("live");
     live["presence"]           = values.presence;
     live["presentsDistance"]   = values.presentsDistance;
@@ -1362,21 +1394,21 @@ void UsermodLD24xxGeoGab::handleJsonGet(AsyncWebServerRequest* request)
   String buffer;
   serializeJson(doc, buffer);
   request->send(200, "application/json", buffer);
-  LD24XX_DPRINT("handleJsonGet(): done" GG_OK); 
+  LD2420_DPRINT("handleJsonGet(): done" GG_OK); 
 }
  
 
 /**
- * @brief Handle JSON POST requests for the LD2410 calibration interface.
+ * @brief Handle JSON POST requests for the LD2420 calibration interface.
  *
  * This handler supports only a minimal set of POST commands:
  *
  * @param request Pointer to the AsyncWebServerRequest.
  * @param json    Parsed JSON payload.
  */
-void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVariant json)
+void UmLD2420GeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVariant json)
 {
-  LD24XX_DPRINT("handleJsonPost(): started"); 
+  LD2420_DPRINT("handleJsonPost(): started"); 
   if (!json.is<JsonObject>()) {
     request->send(400, "application/json", "{\"error\":\"invalid json\"}");
     return;
@@ -1389,19 +1421,19 @@ void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVar
   // Calibration mode control
   // --------------------------------------------------------------------------
   if (!strcmp(cmd, "start_calibration")) {
-    LD24XX_DPRINT("handleJsonPost(): start_calibration" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): start_calibration" GG_OK); 
     pflags.StartCalibration = true;
   }
   else if (!strcmp(cmd, "stop_calibration")) {
-    LD24XX_DPRINT("handleJsonPost(): stop_calibration" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): stop_calibration" GG_OK); 
     pflags.StopCalibration = true;
   }
   else if (!strcmp(cmd, "auto_thresholds")) {
-    LD24XX_DPRINT("handleJsonPost(): auto_thresholds" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): auto_thresholds" GG_OK); 
     pflags.AutoThresholds = true;
   }
   else if (!strcmp(cmd, "load_calibration")) {
-    LD24XX_DPRINT("handleJsonPost(): load_calibration" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): load_calibration" GG_OK); 
     pflags.LoadCalibration = true;
   }
 
@@ -1409,7 +1441,7 @@ void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVar
   // Apply full calibration set (flat JSON, matches calibration_t)
   // --------------------------------------------------------------------------
   else if (!strcmp(cmd, "apply_calibration")) {
-    LD24XX_DPRINT("handleJsonPost(): apply_calibration" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): apply_calibration" GG_OK); 
 
     // Moving thresholds
     if (root.containsKey("movingThresholds")) {
@@ -1445,7 +1477,7 @@ void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVar
   // Detect Baudrate
   // --------------------------------------------------------------------------
   else if (cmd == "detect_baudrate") {
-    LD24XX_DPRINT("handleJsonPost(): detect_baudrate" GG_OK); 
+    LD2420_DPRINT("handleJsonPost(): detect_baudrate" GG_OK); 
     int detected = autoDetectBaudrate();
 
     if (detected > 0) {
@@ -1464,7 +1496,7 @@ void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVar
   // --------------------------------------------------------------------------
   else {
     request->send(400, "application/json", "{\"error\":\"unknown command\"}");
-    LD24XX_DPRINT("handleJsonPost(): unknown command" GG_FAIL); 
+    LD2420_DPRINT("handleJsonPost(): unknown command" GG_FAIL); 
     return;
   }
 
@@ -1472,38 +1504,38 @@ void UsermodLD24xxGeoGab::handleJsonPost(AsyncWebServerRequest* request, JsonVar
   // Default OK response
   // --------------------------------------------------------------------------
   request->send(200, "application/json", "{\"ok\":true}");
-  LD24XX_DPRINT("handleJsonPost():" GG_OK); 
+  LD2420_DPRINT("handleJsonPost():" GG_OK); 
 }
 
 
 /**
- * @brief Handles web requests for the LD2410 UI with native WLED styling.
+ * @brief Handles web requests for the LD2420 UI with native WLED styling.
  * 
  * If the calibration file is missing, it serves a 404 page that 
  * links to the WLED internal stylesheet to maintain a consistent look.
  * 
  * @param request The pointer to the current AsyncWebServerRequest.
  */
-void UsermodLD24xxGeoGab::handleWebRequest(AsyncWebServerRequest *request)
+void UmLD2420GeoGab::handleWebRequest(AsyncWebServerRequest *request)
 {
-    LD24XX_DPRINT("handleWebRequest(): started"); 
+    LD2420_DPRINT("handleWebRequest(): started"); 
 
-    if (!request->url().equals(F("/ld24xx"))) return;
+    if (!request->url().equals(F("/LD2420"))) return;
 
     const char* path = "/calibration.html";
 
     if (!LittleFS.exists(path)) {
-      LD24XX_DPRINT("handleWebRequest(): File not found" GG_FAIL); 
+      LD2420_DPRINT("handleWebRequest(): File not found" GG_FAIL); 
       // Build an HTML response using WLED's own stylesheet
       String html = F("<!DOCTYPE html><html><head>");
       html += F("<meta name='viewport' content='width=device-width, initial-scale=1'>");
       html += F("<link rel='stylesheet' href='/style.css'>"); // Link to WLED system CSS
-      html += F("<title>LD2410 Setup</title></head>");
+      html += F("<title>LD2420 Setup</title></head>");
       
       // 'back' provides the standard WLED dark-mode background
       html += F("<body class='back'><main class='container' style='text-align:center; padding-top:50px;'>");
       
-      html += F("<h2>LD24xx Calibration</h2>");
+      html += F("<h2>LD2420 Calibration</h2>");
       html += F("<p>The files for the calibration page are missing. They should be stored on the device's flash drive. You can find the files under “wled/usermods/LD21xx/device_filesystem/”. You can upload them via the WLED editor page.</p>");
       
       // 'btn' and 'btn-xs' are standard WLED button classes
@@ -1518,8 +1550,8 @@ void UsermodLD24xxGeoGab::handleWebRequest(AsyncWebServerRequest *request)
     }
 
     request->send(LittleFS, path, "text/html");
-    LD24XX_DPRINT("handleWebRequest():" GG_OK); 
+    LD2420_DPRINT("handleWebRequest():" GG_OK); 
 }
 
-static UsermodLD24xxGeoGab LD2010_full;
+static UmLD2420GeoGab LD2010_full;
 REGISTER_USERMOD(LD2010_full);
