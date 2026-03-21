@@ -1,0 +1,129 @@
+<!-- 
+  @file calibration.html
+  @brief LD2410 UI with 3 sections: Monitoring, Calibration, and Settings.
+  @details Optimized for horizontal scrolling on mobile and grid on PC.
+-->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="/style.css">
+    <title>LD2410 Radar</title>
+    <style>
+        :root { --c-1: #111; --c-2: #1af; --c-3: #222; --c-f: #fff; --c-g: #888; }
+        body { background: var(--c-1); color: var(--c-f); font-family: sans-serif; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        .topbar { display: flex; align-items: center; background: #1a1a1a; padding: 12px 15px; border-bottom: 1px solid #333; flex-shrink: 0; position: relative; }
+        .back-btn { position: absolute; left: 15px; z-index: 2; }
+        .title { flex-grow: 1; text-align: center; font-size: 1.3rem; font-weight: bold; letter-spacing: 0.5px; }
+
+        .container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; flex-grow: 1; -webkit-overflow-scrolling: touch; }
+        .container::-webkit-scrollbar { display: none; }
+
+        .card { 
+            background: var(--c-3); border-radius: 15px; padding: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); 
+            border: 1px solid #333; min-width: 320px; flex: 1 0 100%; scroll-snap-align: start; 
+            box-sizing: border-box; margin: 10px; overflow-y: auto;
+        }
+        .card h2 { margin-top: 0; font-size: 0.9rem; color: var(--c-2); text-transform: uppercase; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+
+        .navbar { display: none; background: #1a1a1a; border-top: 1px solid #333; height: 75px; justify-content: space-around; align-items: center; flex-shrink: 0; padding-bottom: 8px; }
+        .nav-item { color: var(--c-g); text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--c-2); font-weight: bold; }
+        .nav-item i { display: block; font-size: 1.8rem; margin-bottom: -2px; font-style: normal; line-height: 1; }
+        .nav-item span { font-size: 0.75rem; }
+
+        @media (min-width: 601px) {
+            .container { overflow-x: hidden; justify-content: center; flex-wrap: wrap; }
+            .card { flex: 0 1 400px; min-width: 350px; margin: 15px; height: fit-content; }
+            .navbar { display: none !important; }
+        }
+        @media (max-width: 600px) { .navbar { display: flex; } }
+
+        .grid-data { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .data-point { background: #111; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #333; }
+        .val { font-size: 1.6rem; font-weight: bold; color: var(--c-2); }
+        .sld-lbl { display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.9rem; color: var(--c-g); }
+        .btn-cnt { text-align: center; margin-top: 25px; }
+        .btn-save { background: #282 !important; border-color: #2a2 !important; color: white !important; padding: 5px 15px !important; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <button class="btn btn-xs back-btn" onclick="window.location.assign('/')">&#10094; Back</button>
+        <div class="title">LD2410 Radar</div>
+    </div>
+
+    <div class="container" id="cnt">
+        
+        <!-- KARTE 1: MONITORING -->
+        <div class="card" id="c1">
+            <h2>Monitoring</h2>
+            <div class="grid-data">
+                <div class="data-point"><small style="color:var(--c-g)">Entfernung</small><span id="dist" class="val">-- cm</span></div>
+                <div class="data-point"><small style="color:var(--c-g)">Energie</small><span id="eng" class="val">-- %</span></div>
+            </div>
+            <div style="margin-top: 20px; text-align: center; color: var(--c-g); font-size: 0.8rem;">
+                Live-Daten vom Sensor
+            </div>
+        </div>
+
+        <!-- KARTE 2: KALIBRIERUNG -->
+        <div class="card" id="c2">
+            <h2>Kalibrierung</h2>
+            <p style="font-size: 0.85rem; color: var(--c-g);">Setzen Sie den Sensor zurück oder kalibrieren Sie den Noise-Floor.</p>
+            <div class="btn-cnt">
+                <button class="btn btn-xs" onclick="requestJson({lh24xx:{cmd:'cal'}})">Jetzt Kalibrieren</button>
+                <br><br>
+                <button class="btn btn-xs" onclick="requestJson({lh24xx:{cmd:'reset'}})">Sensor Reset</button>
+            </div>
+        </div>
+
+        <!-- KARTE 3: SETTINGS -->
+        <div class="card" id="c3">
+            <h2>Settings</h2>
+            <div class="sld-lbl"><span>Empfindlichkeit</span><span id="sv">50</span>%</div>
+            <input type="range" class="isld" min="0" max="100" value="50" oninput="upd('sv',this.value)">
+            
+            <div class="sld-lbl"><span>Reichweite</span><span id="rv">400</span> cm</div>
+            <input type="range" class="isld" min="50" max="800" step="10" value="400" oninput="upd('rv',this.value)">
+            
+            <div class="btn-cnt">
+                <button class="btn btn-xs btn-save" onclick="save()">Speichern & Übernehmen</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- REITER-LEISTE UNTEN (3-Items) -->
+    <nav class="navbar">
+        <div class="nav-item active" onclick="sc(0)" id="t1"><i>&#9737;</i><span>Monitor</span></div>
+        <div class="nav-item" onclick="sc(1)" id="t2"><i>&#9162;</i><span>Calib</span></div>
+        <div class="nav-item" onclick="sc(2)" id="t3"><i>&#9881;</i><span>Settings</span></div>
+    </nav>
+
+    <script>
+        function upd(id, v) { document.getElementById(id).innerText = v; }
+        
+        function sc(idx) {
+            const cnt = document.getElementById('cnt');
+            cnt.scrollTo({ left: idx * cnt.offsetWidth, behavior: 'smooth' });
+            updT(idx);
+        }
+
+        function updT(idx) {
+            document.getElementById('t1').classList.toggle('active', idx === 0);
+            document.getElementById('t2').classList.toggle('active', idx === 1);
+            document.getElementById('t3').classList.toggle('active', idx === 2);
+        }
+
+        document.getElementById('cnt').addEventListener('scroll', function() {
+            updT(Math.round(this.scrollLeft / this.offsetWidth));
+        });
+
+        function save() { alert("Einstellungen gesendet!"); }
+    </script>
+</body>
+</html>

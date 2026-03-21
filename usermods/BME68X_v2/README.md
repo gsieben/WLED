@@ -1,5 +1,8 @@
 # Usermod BME68X
 
+achtung... update wegen des s3 fehlt
+
+
 This usermod was developed for a BME680/BME68X sensor. The BME68X is not compatible with the BME280/BMP280 chip. It has its own library. The original 'BSEC Software Library' from Bosch was used to develop the code. The measured values are displayed on the WLED info page.
 
 <p align="center"><img src="pics/pic1.png" style="width:60%;"></p>
@@ -155,6 +158,8 @@ custom_usermods = ${env:esp32dev.custom_usermods} BME68X
 
 ## Known problems
 
+- Wichtiger Hinweis: Falls ihr eine esp32s3 nutzt, müsst ihr bei der library eingreifen. 
+- 
 - MQTT goes online at device start. Shortly afterwards it goes offline and takes quite a while until it goes online again. The problem does not come from this user module, but from the WLED core.
 - If you save the settings often, WLED can get stuck.
 - If many LEDS are connected to WLED, reading the sensor can cause a small but noticeable hang. The "Pause While WLED Active" option was introduced as a workaround.

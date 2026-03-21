@@ -1,8 +1,7 @@
 {
-  "name": "LD2410_full",
+  "name": "LD2420_full",
   "build": { "libArchive": false },
   "dependencies": {
-    "ld2420":"https://github.com/bolukan/LD2420"
+    "LD2420GeoGab": "^1.0.0"
   }
 }
-
